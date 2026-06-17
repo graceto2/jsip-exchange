@@ -146,10 +146,6 @@ let snapshot_side t (side : Side.t) =
       then 0
       else 1)
   in
-  (* let compare = match side with | Buy -> Comparable.reverse Level.compare
-     | Sell -> Level.compare in *)
-  (* orders_on_side t side |> List.map ~f:Level.of_order |> List.sort
-     ~compare *)
   priority_order_book |> List.map ~f:Level.of_order
 ;;
 
