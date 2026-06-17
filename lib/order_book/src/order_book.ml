@@ -72,11 +72,11 @@ let find_match t incoming =
   let opposite_side = Side.flip incoming_side in
   let resting_orders = side_list t opposite_side in
   let marketable_resting_orders =
-    List.filter resting_orders ~f:(fun order ->
+    List.filter resting_orders ~f:(fun resting_order ->
       Price.is_marketable
         incoming_side
         ~price:(Order.price incoming)
-        ~resting_price:(Order.price order))
+        ~resting_price:(Order.price resting_order))
   in
   match marketable_resting_orders with
   | [] -> None
@@ -84,7 +84,7 @@ let find_match t incoming =
     Some
       (List.fold rest ~init:first ~f:(fun order than ->
          if Price.is_more_aggressive
-              incoming_side
+              opposite_side
               ~price:(Order.price order)
               ~than:(Order.price than)
          then order
@@ -129,17 +129,28 @@ let best_bid_offer t : Bbo.t =
   { bid = best_level t Buy; ask = best_level t Sell }
 ;;
 
+(* sort from most aggressive to least aggressive *)
 let snapshot_side t (side : Side.t) =
-  (* let priority_order_book = List.sort t ~compare:(fun this that -> if
-     Price.is_more_aggressive side ~price:(Order.price this)
-     ~than:(Order.price that) then -1 else if Order_id.compare
-     (Order.order_id this) (Order.order_id that) < 0 then -1 else 1) in *)
-  let compare =
-    match side with
-    | Buy -> Comparable.reverse Level.compare
-    | Sell -> Level.compare
+  let priority_order_book =
+    List.sort (side_list t side) ~compare:(fun this that ->
+      if Price.is_more_aggressive
+           side
+           ~price:(Order.price this)
+           ~than:(Order.price that)
+      then -1
+      else if Order_id.compare (Order.order_id this) (Order.order_id that)
+              < 0
+      then -1
+      else if Order_id.compare (Order.order_id this) (Order.order_id that)
+              = 0
+      then 0
+      else 1)
   in
-  orders_on_side t side |> List.map ~f:Level.of_order |> List.sort ~compare
+  (* let compare = match side with | Buy -> Comparable.reverse Level.compare
+     | Sell -> Level.compare in *)
+  (* orders_on_side t side |> List.map ~f:Level.of_order |> List.sort
+     ~compare *)
+  priority_order_book |> List.map ~f:Level.of_order
 ;;
 
 let snapshot t =
