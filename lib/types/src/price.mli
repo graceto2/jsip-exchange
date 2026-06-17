@@ -1,4 +1,4 @@
-(** Fixed-point price representation.
+(** Fixed-point price representation
 
     Prices are represented as an integer number of cents. For example, the
     price $150.25 is stored as the integer 15025.

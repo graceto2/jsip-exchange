@@ -74,3 +74,59 @@ let%expect_test "negative to_string_dollar" =
   print_endline (Price.to_string_dollar (Price.of_int_cents (-150)));
   [%expect {| -$1.50 |}]
 ;;
+
+(* test is_marketable, is_more aggressive *)
+
+let%expect_test "same price is not more aggressive" =
+  [%test_result: bool]
+    (Price.is_more_aggressive
+       Side.Buy
+       ~price:(Price.of_int_cents 100)
+       ~than:(Price.of_int_cents 100))
+    ~expect:false
+;;
+
+let%expect_test "higher buy price is more aggressive" =
+  [%test_result: bool]
+    (Price.is_more_aggressive
+       Side.Buy
+       ~price:(Price.of_int_cents 200)
+       ~than:(Price.of_int_cents 2))
+    ~expect:true
+;;
+
+let%expect_test "higher sell price is less aggressive" =
+  [%test_result: bool]
+    (Price.is_more_aggressive
+       Side.Sell
+       ~price:(Price.of_int_cents 333)
+       ~than:(Price.of_int_cents 33))
+    ~expect:false
+;;
+
+let%expect_test "buy price higher than resting price is marketable" =
+  [%test_result: bool]
+    (Price.is_marketable
+       Side.Buy
+       ~price:(Price.of_int_cents 234)
+       ~resting_price:(Price.of_int_cents 3))
+    ~expect:true
+;;
+
+let%expect_test "sell price same as resting price is marketable" =
+  [%test_result: bool]
+    (Price.is_marketable
+       Side.Sell
+       ~price:(Price.of_int_cents 234)
+       ~resting_price:(Price.of_int_cents 234))
+    ~expect:true
+;;
+
+let%expect_test "sell price higher than resting price is not marketable" =
+  [%test_result: bool]
+    (Price.is_marketable
+       Side.Sell
+       ~price:(Price.of_int_cents 234)
+       ~resting_price:(Price.of_int_cents 3))
+    ~expect:false
+;;
