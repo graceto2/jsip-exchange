@@ -330,6 +330,7 @@ parsing: `Protocol.parse_command` hardcodes `"IOC"`, `"DAY"`, etc. as
 string literals, but `Time_in_force` already has a case-insensitive
 `of_string` derived from `[@@deriving string]`. Use it instead.
 
+<!-- ??? -->
 Similarly, these abbreviations are hard-coded in error messages and usage strings, meaning
 this have to be manually updated every time the variant changes.
 Fortunately, `[@@deriving enumerate]` provides a `val all : t list` of the variant tags that you can use along with

@@ -4,6 +4,8 @@ open Jsip_types
 (* Default participant when no "as <name>" is specified in the command.
    [parse_command_with_default_participant] overrides this with the
    caller-supplied default. *)
+
+(* remove parsing after making tests here *)
 let default_participant = Participant.of_string "anonymous"
 
 let parse_command line =

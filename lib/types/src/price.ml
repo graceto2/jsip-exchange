@@ -29,15 +29,13 @@ let ( - ) = Int.( - )
 let ( * ) price qty = price * qty
 
 let is_more_aggressive side ~price ~than =
-  match side with
-  | Side.Buy -> if price > than then true else false
-  | Sell -> if price < than then true else false
+  match side with Side.Buy -> price > than | Sell -> price < than
 ;;
 
 let is_marketable side ~price ~resting_price =
   match side with
-  | Side.Buy -> if price >= resting_price then true else false
-  | Sell -> if price <= resting_price then true else false
+  | Side.Buy -> price >= resting_price
+  | Sell -> price <= resting_price
 ;;
 
 let to_string_dollar t =

@@ -78,23 +78,22 @@ let find_match t incoming =
         ~price:(Order.price incoming)
         ~resting_price:(Order.price resting_order))
   in
-  match marketable_resting_orders with
-  | [] -> None
-  | first :: rest ->
-    Some
-      (List.fold rest ~init:first ~f:(fun order than ->
-         if Price.is_more_aggressive
-              opposite_side
-              ~price:(Order.price order)
-              ~than:(Order.price than)
-         then order
-         else if Order_id.compare
-                   (Order.order_id than)
-                   (Order.order_id order)
-                 > 0
-         then order
-         else than))
+  List.reduce marketable_resting_orders ~f:(fun order than ->
+    if Price.is_more_aggressive
+         opposite_side
+         ~price:(Order.price order)
+         ~than:(Order.price than)
+    then order
+    else if Order_id.compare (Order.order_id than) (Order.order_id order) > 0
+    then order
+    else than)
 ;;
+
+(* match marketable_resting_orders with | [] -> None | first :: rest -> Some
+   (List.fold rest ~init:first ~f:(fun order than -> if
+   Price.is_more_aggressive opposite_side ~price:(Order.price order)
+   ~than:(Order.price than) then order else if Order_id.compare
+   (Order.order_id than) (Order.order_id order) > 0 then order else than)) *)
 
 let orders_on_side t side = side_list t side
 let is_empty t = List.is_empty t.bids && List.is_empty t.asks
