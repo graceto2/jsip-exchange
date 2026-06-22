@@ -1,12 +1,15 @@
 open! Core
 open! Jsip_types
 
-type verb =
-  | Buy
-  | Sell
-  | Book
-  | Subscribe
-[@@deriving string ~case_insensitive]
+(* wrap in module *)
+module Verb = struct
+  type t =
+    | Buy
+    | Sell
+    | Book
+    | Subscribe
+  [@@deriving string ~case_insensitive]
+end
 
 type t =
   | Submit of Order.Request.t
@@ -48,8 +51,6 @@ let parse_buy_or_sell ?(participant = default_p) list ~side =
       match rest with
       | tif_str :: rest' ->
         (match String.uppercase tif_str with
-         (* | "IOC" -> Ok (Time_in_force.Ioc, rest') | "DAY" -> Ok (Day,
-            rest') *)
          | "AS" -> Ok (Time_in_force.Day, rest)
          | _ -> Ok (Time_in_force.of_string tif_str, rest'))
       | [] -> Ok (Day, [])
@@ -85,7 +86,7 @@ let parse_exn ?participant string =
   match parts with
   | [] -> failwith "empty command"
   | first_word :: rest ->
-    let verb = verb_of_string first_word in
+    let verb = Verb.of_string first_word in
     (match verb with
      | Buy ->
        Result.ok_or_failwith
