@@ -6,11 +6,13 @@ type t =
   { market_data_subscribers_by_symbol :
       Exchange_event.t Pipe.Writer.t Bag.t Symbol.Table.t
   ; audit_subscribers : Exchange_event.t Pipe.Writer.t Bag.t
+  ; participant_sessions : Session.t Participant.Table.t
   }
 
 let create () =
   { market_data_subscribers_by_symbol = Symbol.Table.create ()
   ; audit_subscribers = Bag.create ()
+  ; participant_sessions = Participant.Table.create ()
   }
 ;;
 
@@ -65,10 +67,34 @@ let push_to_session t participant event =
   (* TODO: Once sessions have been implemented this function should write the
      event to the appropriate session's pipe. For now we have the server
      binary print these events to stdout while tests can silence them. *)
-  ignore t;
-  print_endline
-    [%string
-      "[for %{participant#Participant}] %{Event_protocol.format_event event}"]
+  let session = Hashtbl.find t.participant_sessions participant in
+  match session with
+  | Some session -> Session.push session event
+  | None -> ()
+;;
+
+let clean_up_session t session =
+  let participant = Session.participant session in
+  Hashtbl.remove t.participant_sessions participant;
+  Deferred.return ()
+;;
+
+let set_up_session t participant =
+  let old_session = Hashtbl.find t.participant_sessions participant in
+  match old_session with
+  | Some session ->
+    let%bind () = clean_up_session t session in
+    Hashtbl.add_exn
+      t.participant_sessions
+      ~key:participant
+      ~data:(Session.create participant);
+    Deferred.return ()
+  | None ->
+    Hashtbl.add_exn (* repetitive? *)
+      t.participant_sessions
+      ~key:participant
+      ~data:(Session.create participant);
+    Deferred.return ()
 ;;
 
 let dispatch_event t (event : Exchange_event.t) =

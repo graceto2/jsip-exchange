@@ -39,3 +39,10 @@ let audit_log_rpc =
     ~bin_error:Error.bin_t
     ()
 ;;
+
+let login_rpc participant_name =
+  if String.is_empty (String.strip participant_name)
+  then raise_s [%message "Symbol.of_string: symbol must be non-empty"]
+  else Session.create (Participant.of_string participant_name)
+;;
+(* TODO *)
