@@ -24,6 +24,7 @@ let default_p = Participant.of_string "anonymous"
 (* rest is string list of rest of input, excluding the verb *)
 (* returns Result instead of Exception, even though used as helper function
    in parse_exn *)
+
 let parse_buy_or_sell ?(participant = default_p) list ~side =
   let open Result.Let_syntax in
   match list with
@@ -78,6 +79,10 @@ let parse_buy_or_sell ?(participant = default_p) list ~side =
     Error "expected: BUY|SELL <symbol> <size> <price> [DAY|IOC] [as <name>]"
 ;;
 
+let parse_buy_or_sell_exn ?participant list ~side =
+  Result.ok_or_failwith (parse_buy_or_sell ?participant list ~side)
+;;
+
 let parse_exn ?participant string =
   let line = String.strip string in
   let parts =
@@ -88,13 +93,8 @@ let parse_exn ?participant string =
   | first_word :: rest ->
     let verb = Verb.of_string first_word in
     (match verb with
-     | Buy ->
-       Result.ok_or_failwith
-         (parse_buy_or_sell ?participant rest ~side:Side.Buy)
-       (* make into _exn helper function?? *)
-     | Sell ->
-       Result.ok_or_failwith
-         (parse_buy_or_sell ?participant rest ~side:Side.Sell)
+     | Buy -> parse_buy_or_sell_exn ?participant rest ~side:Side.Buy
+     | Sell -> parse_buy_or_sell_exn ?participant rest ~side:Side.Sell
      | Book ->
        (match rest with
         | symbol :: [] -> Book (Symbol.of_string symbol)

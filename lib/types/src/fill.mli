@@ -22,6 +22,7 @@ type t =
 [@@deriving sexp, bin_io]
 
 val to_string : t -> string
+val to_participant_view : t -> Participant.t -> string option
 
 (** {2 Convenience accessors} *)
 
