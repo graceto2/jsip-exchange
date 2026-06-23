@@ -29,3 +29,5 @@ val submit : t -> Order.Request.t -> Exchange_event.t list
 (** The order book for a given symbol, or [None] if the symbol is not traded
     on this engine. *)
 val book : t -> Symbol.t -> Order_book.t option
+
+(* val end_of_day : t -> Exchange_event.t list *)

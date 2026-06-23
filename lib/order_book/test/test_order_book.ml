@@ -54,6 +54,21 @@ let%expect_test "remove an order" =
     ~expect:None
 ;;
 
+let%expect_test "add and remove same order twice" =
+  let book = Order_book.create Harness.aapl in
+  let order = make_order ~side:Sell ~price_cents:15100 ~order_id:1 () in
+  Order_book.add book order;
+  Order_book.remove book (Order.order_id order);
+  Order_book.add book order;
+  [%test_result: int] (Order_book.count book Sell) ~expect:1;
+  let removed = Order_book.For_testing.remove book (Order.order_id order) in
+  [%test_result: Order.t option] removed ~expect:(Some order);
+  [%test_result: int] (Order_book.count book Sell) ~expect:0;
+  [%test_result: _ option]
+    (Order_book.find book (Order_id.For_testing.of_int 1))
+    ~expect:None
+;;
+
 let%expect_test "remove returns None for unknown order" =
   let book = Order_book.create Harness.aapl in
   [%test_result: _ option]

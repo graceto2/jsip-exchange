@@ -45,6 +45,8 @@ val find_match : t -> Order.t -> Order.t option
 (** All resting orders on the given side. *)
 val orders_on_side : t -> Side.t -> Order.t list
 
+val order_ids_on_side : t -> Side.t -> Order_id.t list
+
 (** Is the book completely empty (no bids, no asks)? *)
 val is_empty : t -> bool
 

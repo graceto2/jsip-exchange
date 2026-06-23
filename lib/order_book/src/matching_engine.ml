@@ -107,3 +107,17 @@ let submit t (request : Order.Request.t) =
     in
     List.concat [ [ accepted ]; fill_events; post_events; bbo_events ]
 ;;
+
+(* let remove_day_orders_on_side order_book ~side = match
+   Order_book.order_ids_on_side order_book side with | first :: rest -> if
+   first.time_in_force = Time_in_force.Day then (Order_book.remove order_book
+   ) *)
+
+(* do separately using built in functions or do at once using recursion? *)
+(* let remove_day_orders_on_side order_book ~side = match
+   Order_book.orders_on_side order_book side with | order :: rest -> if
+   order.time_in_force = Time_in_force.Day then Order_book.remove order_book
+   (Order.order_id order) else *)
+(* turn into pipe, use recursive approach *)
+(* let end_of_day t event_list = List.iter t.books ~f:(fun book -> List.iter
+   (Order_book.orders_on_side book Side.Buy) ~f:()) *)
