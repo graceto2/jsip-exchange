@@ -22,7 +22,7 @@ let%expect_test "parse: basic book" =
   [%expect {| AAPL |}]
 ;;
 
-(* --- Successful parsing (copied from test_protocol) --- *)
+(* --- Successful parsing --- *)
 
 let%expect_test "parse: basic buy" =
   print_parse "BUY AAPL 100 150.25";
@@ -139,108 +139,29 @@ let%expect_test "parse error: unknown time-in-force" =
 let%expect_test "default participant: used when none specified" =
   let default = Participant.of_string "DefaultTrader" in
   let req =
-    Protocol.parse_command_with_default_participant
-      "BUY AAPL 100 150.00"
-      ~default
-    |> Result.map_error ~f:Error.of_string
+    Exchange_command.parse ~default_participant:default "BUY AAPL 100 150.00"
     |> ok_exn
   in
-  print_endline [%string "participant=%{req.participant#Participant}"];
-  [%expect {| participant=DefaultTrader |}]
+  match req with
+  | Submit order ->
+    print_endline [%string "participant=%{order.participant#Participant}"];
+    [%expect {| participant=DefaultTrader |}]
+  | _ -> [%expect.unreachable]
 ;;
 
 let%expect_test "default participant: overridden by explicit 'as'" =
   let default = Participant.of_string "DefaultTrader" in
   let req =
-    Protocol.parse_command_with_default_participant
+    Exchange_command.parse
+      ~default_participant:default
       "BUY AAPL 100 150.00 as Alice"
-      ~default
-    |> Result.map_error ~f:Error.of_string
     |> ok_exn
   in
-  print_endline [%string "participant=%{req.participant#Participant}"];
-  [%expect {| participant=Alice |}]
-;;
-
-(* --- Event formatting --- *)
-
-let%expect_test "format_event: all event types" =
-  let events =
-    [ Exchange_event.Order_accept
-        { order_id = Order_id.of_string "1"
-        ; request =
-            { symbol = Symbol.of_string "AAPL"
-            ; participant = Participant.of_string "Alice"
-            ; side = Buy
-            ; price = Price.of_int_cents 15000
-            ; size = Size.of_int 100
-            ; time_in_force = Day
-            }
-        }
-    ; Fill
-        { fill_id = 1
-        ; symbol = Symbol.of_string "AAPL"
-        ; price = Price.of_int_cents 15000
-        ; size = Size.of_int 100
-        ; aggressor_order_id = Order_id.of_string "2"
-        ; aggressor_participant = Participant.of_string "Alice"
-        ; aggressor_side = Buy
-        ; resting_order_id = Order_id.of_string "1"
-        ; resting_participant = Participant.of_string "Bob"
-        }
-    ; Order_cancel
-        { order_id = Order_id.of_string "3"
-        ; participant = Participant.of_string "Charlie"
-        ; symbol = Symbol.of_string "TSLA"
-        ; remaining_size = Size.of_int 50
-        ; reason = Ioc_remainder
-        }
-    ; Order_reject
-        { request =
-            { symbol = Symbol.of_string "GOOG"
-            ; participant = Participant.of_string "Alice"
-            ; side = Sell
-            ; price = Price.of_int_cents 28000
-            ; size = Size.of_int 10
-            ; time_in_force = Day
-            }
-        ; reason = "unknown symbol"
-        }
-    ; Best_bid_offer_update
-        { symbol = Symbol.of_string "AAPL"
-        ; bbo =
-            { bid =
-                Some
-                  { price = Price.of_int_cents 14990
-                  ; size = Size.of_int 200
-                  }
-            ; ask =
-                Some
-                  { price = Price.of_int_cents 15010
-                  ; size = Size.of_int 100
-                  }
-            }
-        }
-    ; Best_bid_offer_update
-        { symbol = Symbol.of_string "AAPL"; bbo = Bbo.empty }
-    ; Trade_report
-        { symbol = Symbol.of_string "AAPL"
-        ; price = Price.of_int_cents 15000
-        ; size = Size.of_int 100
-        }
-    ]
-  in
-  List.iter events ~f:(fun e -> print_endline (Protocol.format_event e));
-  [%expect
-    {|
-    ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=3 TSLA remaining=50 reason=IOC_REMAINDER
-    REJECTED GOOG SELL 10@$280.00 reason=unknown symbol
-    BBO AAPL bid=$149.90 x200 ask=$150.10 x100
-    BBO AAPL bid=- ask=-
-    TRADE AAPL $150.00 x100
-    |}]
+  match req with
+  | Submit order ->
+    print_endline [%string "participant=%{order.participant#Participant}"];
+    [%expect {| participant=Alice |}]
+  | _ -> [%expect.unreachable]
 ;;
 
 (* --- Round-trip: parse then format --- *)
@@ -254,14 +175,14 @@ let%expect_test "round-trip: parse a command, submit, format result" =
     (Harness.sell ~price_cents:15000 ~participant:Harness.bob ());
   (* Parse a buy command from text and submit it *)
   let request =
-    Protocol.parse_command "BUY AAPL 100 150.00 as Alice"
-    |> Result.map_error ~f:Error.of_string
-    |> ok_exn
+    Exchange_command.parse "BUY AAPL 100 150.00 as Alice" |> ok_exn
   in
-  let events = Matching_engine.submit (Harness.engine t) request in
-  print_endline (Protocol.format_events events);
-  [%expect
-    {|
+  match request with
+  | Submit order ->
+    let events = Matching_engine.submit (Harness.engine t) order in
+    print_endline (Event_protocol.format_events events);
+    [%expect
+      {|
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     BBO AAPL bid=- ask=$150.00 x100
     ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
@@ -269,4 +190,5 @@ let%expect_test "round-trip: parse a command, submit, format result" =
     TRADE AAPL $150.00 x100
     BBO AAPL bid=- ask=-
     |}]
+  | _ -> [%expect.unreachable]
 ;;

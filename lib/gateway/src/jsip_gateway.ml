@@ -1,4 +1,4 @@
-module Protocol = Protocol
+module Event_protocol = Event_protocol
 module Rpc_protocol = Rpc_protocol
 module Session = Session
 module Dispatcher = Dispatcher

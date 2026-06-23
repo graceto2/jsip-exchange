@@ -70,7 +70,7 @@ market-data feed.|}];
              don't_wait_for
                (Pipe.iter_without_pushback reader ~f:(fun event ->
                   print_endline
-                    [%string "[MD] %{Protocol.format_event event}"]));
+                    [%string "[MD] %{Event_protocol.format_event event}"]));
              loop ())
         | Ok (Exchange_command.Submit request) ->
           let%bind.Deferred.Or_error () =
