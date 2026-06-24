@@ -25,8 +25,6 @@ end
 let request_queue_size_budget = 1024
 
 let handle_submit ~request_writer (request : Order.Request.t) =
-  let pipe_closed = Pipe.is_closed request_writer in
-  print_s [%message "entered handle submit" (pipe_closed : bool)];
   let%map () = Pipe.write_if_open request_writer request in
   Ok ()
 ;;
@@ -81,6 +79,12 @@ let start ~symbols ~port () =
                in
                state.session <- Dispatcher.get_session dispatcher participant;
                return (Ok participant))
+        ; Rpc.Pipe_rpc.implement
+            Rpc_protocol.session_feed_rpc
+            (fun (state : Connection_state.t) () ->
+               match state.session with
+               | None -> failwith "not logged in"
+               | Some session -> Session.reader session)
         ]
       ~on_unknown_rpc:`Close_connection
       ~on_exception:Log_on_background_exn
