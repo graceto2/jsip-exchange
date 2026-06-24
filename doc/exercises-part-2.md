@@ -263,6 +263,7 @@ Update `submit_order_rpc`'s handler to:
    (so a logged-in client can't submit on behalf of someone else).
 3. Enqueue the request as before.
 
+
 Update the scenario runner, the server binary's seed and
 trade-back-and-forth modes, and any other callers so they log in
 before they submit.

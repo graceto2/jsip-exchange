@@ -16,6 +16,16 @@ module Config = struct
 end
 
 let seed_book (config : Config.t) conn =
+  let%bind participant =
+    Rpc.Rpc.dispatch_exn
+      Rpc_protocol.login_rpc
+      conn
+      (Participant.to_string config.participant)
+    >>| Or_error.ok_exn
+    (* is this correct way? should we replace spec.participant with
+       participant, or just ignore it *)
+  in
+  ignore participant;
   let submit request =
     let%map result =
       Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc conn request

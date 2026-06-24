@@ -11,6 +11,12 @@ type t =
   ; port : int
   }
 
+module Connection_state = struct
+  type t = { mutable session : Session.t option }
+
+  let participant t = Option.map t.session ~f:Session.participant
+end
+
 (* Bound how many client requests can sit in the queue waiting for the
    matching engine. Once the queue is full, [Pipe.write] returns a pending
    deferred and the [submit_order_rpc] handler blocks until the engine has
@@ -19,6 +25,8 @@ type t =
 let request_queue_size_budget = 1024
 
 let handle_submit ~request_writer (request : Order.Request.t) =
+  let pipe_closed = Pipe.is_closed request_writer in
+  print_s [%message "entered handle submit" (pipe_closed : bool)];
   let%map () = Pipe.write_if_open request_writer request in
   Ok ()
 ;;
@@ -41,9 +49,13 @@ let start ~symbols ~port () =
       ~implementations:
         [ Rpc.Rpc.implement
             Rpc_protocol.submit_order_rpc
-            (fun state request ->
-               ignore state;
-               handle_submit ~request_writer request)
+            (fun (state : Connection_state.t) request ->
+               match Connection_state.participant state with
+               | None ->
+                 Deferred.return
+                   (Or_error.error_string "Error: not logged in")
+               | Some participant ->
+                 handle_submit ~request_writer { request with participant })
         ; Rpc.Rpc.implement' Rpc_protocol.book_query_rpc (fun state symbol ->
             ignore state;
             Matching_engine.book engine symbol
@@ -60,6 +72,15 @@ let start ~symbols ~port () =
             ignore state;
             let reader = Dispatcher.subscribe_audit dispatcher in
             return (Ok reader))
+        ; Rpc.Rpc.implement
+            Rpc_protocol.login_rpc
+            (fun (state : Connection_state.t) name ->
+               let participant = Participant.of_string name in
+               let%bind () =
+                 Dispatcher.set_up_session dispatcher participant
+               in
+               state.session <- Dispatcher.get_session dispatcher participant;
+               return (Ok participant))
         ]
       ~on_unknown_rpc:`Close_connection
       ~on_exception:Log_on_background_exn
@@ -67,7 +88,8 @@ let start ~symbols ~port () =
   let%map tcp_server =
     Rpc.Connection.serve
       ~implementations
-      ~initial_connection_state:(fun _addr _conn -> ())
+      ~initial_connection_state:(fun _addr _conn ->
+        { Connection_state.session = None })
       ~where_to_listen:(Tcp.Where_to_listen.of_port port)
       ()
   in

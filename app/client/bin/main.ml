@@ -12,11 +12,15 @@ open Jsip_types
 open Jsip_gateway
 
 let run_client ~host ~port ~participant_name =
-  let participant = Participant.of_string participant_name in
+  (* let participant = Participant.of_string participant_name in *)
   let where_to_connect =
     Tcp.Where_to_connect.of_host_and_port { host; port }
   in
   let%bind conn = Rpc.Connection.client where_to_connect >>| Result.ok_exn in
+  let%bind participant =
+    Rpc.Rpc.dispatch_exn Rpc_protocol.login_rpc conn participant_name
+    >>| Or_error.ok_exn
+  in
   print_endline
     [%string
       {|

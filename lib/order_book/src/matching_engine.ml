@@ -108,20 +108,13 @@ let submit t (request : Order.Request.t) =
     List.concat [ [ accepted ]; fill_events; post_events; bbo_events ]
 ;;
 
-let remove_day_orders_on_side order_book ~side =
-  let day_orders =
-    List.filter (Order_book.orders_on_side order_book side) ~f:(fun order ->
-      Time_in_force.equal (Order.time_in_force order) Time_in_force.Day)
-  in
-  List.map day_orders ~f:(fun order ->
-    Exchange_event.Order_cancel
-      { order_id = Order.order_id order
-      ; participant = Order.participant order
-      ; symbol = Order.symbol order
-      ; remaining_size = Order.size order
-      ; reason = Cancel_reason.End_of_day
-      })
-;;
+(* pt 1 EXERCISe 5: did not finish *)
+(* let remove_day_orders_on_side order_book ~side = let day_orders =
+   List.filter (Order_book.orders_on_side order_book side) ~f:(fun order ->
+   Time_in_force.equal (Order.time_in_force order) Time_in_force.Day) in
+   List.map day_orders ~f:(fun order -> Exchange_event.Order_cancel
+   [{ order_id = Order.order_id order ; participant = Order.participant order ; symbol = Order.symbol order ; remaining_size = Order.size order ; reason = Cancel_reason.End_of_day }])
+   ;; *)
 
 (* do separately using built in functions or do at once using recursion? *)
 (* let remove_day_orders_on_side order_book ~side = let oid = Order.order_id

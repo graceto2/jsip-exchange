@@ -64,13 +64,12 @@ let push_audit t event =
 ;;
 
 let push_to_session t participant event =
-  (* TODO: Once sessions have been implemented this function should write the
-     event to the appropriate session's pipe. For now we have the server
-     binary print these events to stdout while tests can silence them. *)
   let session = Hashtbl.find t.participant_sessions participant in
   match session with
-  | Some session -> Session.push session event
-  | None -> ()
+  | Some session ->
+    print_endline "some session";
+    Session.push session event
+  | None -> print_endline "no session"
 ;;
 
 let clean_up_session t session =
@@ -135,3 +134,7 @@ let dispatch t events = List.iter events ~f:(dispatch_event t)
 module For_testing = struct
   let audit_subscriber_count t = Bag.length t.audit_subscribers
 end
+
+let get_session t participant =
+  Hashtbl.find t.participant_sessions participant
+;;

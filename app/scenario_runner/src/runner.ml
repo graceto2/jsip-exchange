@@ -18,6 +18,16 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
     >>| Result.map_error ~f:Error.of_exn
     >>| ok_exn
   in
+  let%bind participant =
+    Rpc.Rpc.dispatch_exn
+      Rpc_protocol.login_rpc
+      connection
+      (Participant.to_string spec.participant)
+    >>| Or_error.ok_exn
+    (* is this correct way? should we replace spec.participant with
+       participant, or just ignore it *)
+  in
+  (* ignore participant; *)
   let submit request =
     Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc connection request
   in
@@ -32,7 +42,7 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
     Bot_runtime.create
       spec.bot
       spec.config
-      ~participant:spec.participant
+      ~participant
       ~oracle
       ~rng:(Splittable_random.of_int spec.rng_seed)
       ~submit
@@ -60,7 +70,7 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
       return ()
   in
   print_endline
-    [%string "[scenario] starting bot %{spec.participant#Participant}"];
+    [%string "[scenario] starting bot %{participant#Participant}"];
   don't_wait_for (Bot_runtime.start bot);
   return ()
 ;;

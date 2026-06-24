@@ -41,6 +41,8 @@ val subscribe_market_data
     / admin tools. *)
 val subscribe_audit : t -> Exchange_event.t Pipe.Reader.t
 
+val set_up_session : t -> Participant.t -> unit Deferred.t
+
 (** Route each event to every interested subscriber:
 
     - Every event is pushed to every audit subscriber.
@@ -53,6 +55,8 @@ val subscribe_audit : t -> Exchange_event.t Pipe.Reader.t
 
     Each session lookup is O(1) and independent of subscriber count. *)
 val dispatch : t -> Exchange_event.t list -> unit
+
+val get_session : t -> Participant.t -> Session.t option
 
 module For_testing : sig
   val audit_subscriber_count : t -> int
