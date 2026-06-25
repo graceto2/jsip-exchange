@@ -84,7 +84,7 @@ let start ~symbols ~port () =
             (fun (state : Connection_state.t) () ->
                match state.session with
                | None -> failwith "not logged in"
-               | Some session -> Session.reader session)
+               | Some session -> return (Ok (Session.reader session)))
         ]
       ~on_unknown_rpc:`Close_connection
       ~on_exception:Log_on_background_exn

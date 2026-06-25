@@ -78,4 +78,4 @@ let%expect_test "audit-log RPC" =
   return ()
 ;;
 
-(* add block for login_rpc *)
+(* add block for login_rpc, rpc_submit *)

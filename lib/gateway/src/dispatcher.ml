@@ -77,15 +77,6 @@ let clean_up_session t session =
 ;;
 
 let set_up_session t participant =
-  (* let old_session = Hashtbl.find t.participant_sessions participant in
-     let%bind () = match old_session with | Some session -> let%bind () =
-     clean_up_session t session in return () | None -> return () in let
-     session = Session.create participant in Hashtbl.add_exn (*
-     repetitive? *) t.participant_sessions ~key:participant ~data:session;
-     don't_wait_for (Pipe.iter_without_pushback (Session.reader session)
-     ~f:(fun event -> print_endline
-     [%string "[for %{participant#Participant}] %{Event_protocol.format_event  \ event}"]));
-     return () ;; *)
   let old_session = Hashtbl.find t.participant_sessions participant in
   match old_session with
   | Some session ->

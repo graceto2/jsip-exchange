@@ -12,7 +12,6 @@ open Jsip_types
 open Jsip_gateway
 
 let run_client ~host ~port ~participant_name =
-  (* let participant = Participant.of_string participant_name in *)
   let where_to_connect =
     Tcp.Where_to_connect.of_host_and_port { host; port }
   in
@@ -21,6 +20,18 @@ let run_client ~host ~port ~participant_name =
     Rpc.Rpc.dispatch_exn Rpc_protocol.login_rpc conn participant_name
     >>| Or_error.ok_exn
   in
+  let%bind session_feed, _metadata =
+    Rpc.Pipe_rpc.dispatch_exn Rpc_protocol.session_feed_rpc conn ()
+  in
+  don't_wait_for
+    (Pipe.iter_without_pushback session_feed ~f:(fun event ->
+       match event with
+       | Fill fill ->
+         let fill = Fill.to_participant_view fill participant in
+         (match fill with Some s -> print_endline s | None -> ())
+       | _ ->
+         let e = Event_protocol.format_event event in
+         print_endline [%string "[%{participant#Participant}] %{e}"]));
   print_endline
     [%string
       {|
@@ -85,33 +96,6 @@ market-data feed.|}];
           print_endline
             [%string "ERROR subscribing: %{Error.to_string_hum err}"];
           loop ())
-    (* else if String.is_prefix line ~prefix:"BOOK" then ( match
-       String.chop_prefix line ~prefix:"BOOK " with | None -> print_endline
-       "ERROR: expected BOOK <symbol>"; loop () | Some rest -> let symbol =
-       Symbol.of_string (String.uppercase (String.strip rest)) in let%bind
-       result = Rpc.Rpc.dispatch_exn Rpc_protocol.book_query_rpc conn symbol
-       in (match result with | None -> print_endline
-       [%string "No book available for %{symbol#Symbol}"] | Some result ->
-       print_endline (Book.to_string result)); loop ()) else if
-       String.is_prefix line ~prefix:"SUBSCRIBE" then ( match
-       String.chop_prefix line ~prefix:"SUBSCRIBE " with | None ->
-       print_endline "ERROR: expected SUBSCRIBE <symbol>"; loop () | Some
-       rest -> let symbol = Symbol.of_string (String.uppercase (String.strip
-       rest)) in let%bind result = Rpc.Pipe_rpc.dispatch
-       Rpc_protocol.market_data_rpc conn [ symbol ] in (match result with |
-       Error err | Ok (Error err) -> print_endline
-       [%string "ERROR subscribing: %{Error.to_string_hum err}"]; loop () |
-       Ok (Ok (reader, _id)) -> print_endline
-       [%string {| Subscribed to %{symbol#Symbol} market data. Updates will appear below. Continue entering commands as normal.|}];
-       (* Read market data in the background; the command loop continues
-       running concurrently. *) don't_wait_for (Pipe.iter_without_pushback
-       reader ~f:(fun event -> print_endline
-       [%string "[MD] %{Protocol.format_event event}"])); loop ())) else (
-       match Protocol.parse_command_with_default_participant line
-       ~default:participant with | Error msg -> print_endline
-       [%string "ERROR: %{msg}"]; loop () | Ok request ->
-       let%bind.Deferred.Or_error () = Rpc.Rpc.dispatch_exn
-       Rpc_protocol.submit_order_rpc conn request in loop ()) *)
   in
   loop ()
 ;;
