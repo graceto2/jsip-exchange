@@ -21,10 +21,10 @@ type t =
    caller-supplied default. *)
 let default_p = Participant.of_string "anonymous"
 
-let parse_buy_or_sell ?default_participant list ~side =
+let parse_buy_or_sell ?default_participant input_tokens ~side =
   let open Result.Let_syntax in
-  match list with
-  | symbol_str :: size_str :: price_str :: rest ->
+  match input_tokens with
+  | client_order_id :: symbol_str :: size_str :: price_str :: rest ->
     let%bind size =
       match Int.of_string_opt size_str with
       | Some n when n > 0 -> Ok n
@@ -72,10 +72,13 @@ let parse_buy_or_sell ?default_participant list ~side =
           ; price
           ; size = Size.of_int size
           ; time_in_force
+          ; client_order_id = Int.of_string client_order_id
           }
           : Order.Request.t))
   | _ ->
-    Error "expected: BUY|SELL <symbol> <size> <price> [DAY|IOC] [as <name>]"
+    Error
+      "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC] [as \
+       <name>]"
 ;;
 
 let parse_buy_or_sell_exn ?default_participant list ~side =

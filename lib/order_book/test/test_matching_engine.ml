@@ -121,7 +121,7 @@ let%expect_test "IOC: no match means immediate cancel" =
   [%expect
     {|
     ACCEPTED id=1 AAPL BUY 100@$150.00 IOC
-    CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
     |}]
 ;;
 
@@ -136,7 +136,7 @@ let%expect_test "IOC: partial fill then cancel remainder" =
     ACCEPTED id=1 AAPL SELL 40@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$150.00 IOC
     FILL fill_id=1 AAPL $150.00 x40 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=2 AAPL remaining=60 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=2 AAPL remaining=60 reason=IOC_REMAINDER
     |}]
 ;;
 
@@ -161,7 +161,7 @@ let%expect_test "IOC: does not rest on book" =
   [%expect
     {|
     ACCEPTED id=1 AAPL BUY 100@$150.00 IOC
-    CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
     === AAPL ===
       BIDS: (empty)
       ASKS: (empty)
@@ -408,7 +408,7 @@ let%expect_test "scenario: aggressive IOC sweeps entire book" =
     FILL fill_id=1 AAPL $150.00 x50 aggressor=4(Alice) BUY resting=1(Bob)
     FILL fill_id=2 AAPL $150.10 x50 aggressor=4(Alice) BUY resting=2(Charlie)
     FILL fill_id=3 AAPL $150.20 x50 aggressor=4(Alice) BUY resting=3(Bob)
-    CANCELLED id=4 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=4 AAPL remaining=50 reason=IOC_REMAINDER
     === AAPL ===
       BIDS: (empty)
       ASKS: (empty)
@@ -462,5 +462,31 @@ let%expect_test "scenario: fill IDs are globally sequential" =
     FILL fill_id=1 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
     ACCEPTED id=4 TSLA BUY 100@$200.00 DAY
     FILL fill_id=2 TSLA $200.00 x100 aggressor=4(Alice) BUY resting=2(Charlie)
+    |}]
+;;
+
+(* -- test duplicate id detection -- *)
+
+let%expect_test "duplicate detection: alice can't request order with two \
+                 different ids"
+  =
+  let t = Harness.create () in
+  submit_
+    t
+    (Harness.sell
+       ~price_cents:15000
+       ~participant:Harness.bob
+       ()
+       ~client_order_id:2);
+  submit_
+    t
+    (Harness.sell
+       ~price_cents:1000
+       ~participant:Harness.bob
+       ()
+       ~client_order_id:1);
+  [%expect {|
+    ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
+    REJECTED AAPL SELL 100@$10.00 reason=Client order ID already in use
     |}]
 ;;

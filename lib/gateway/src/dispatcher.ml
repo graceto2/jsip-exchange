@@ -78,20 +78,16 @@ let clean_up_session t session =
 
 let set_up_session t participant =
   let old_session = Hashtbl.find t.participant_sessions participant in
-  match old_session with
-  | Some session ->
-    let%bind () = clean_up_session t session in
-    Hashtbl.add_exn
-      t.participant_sessions
-      ~key:participant
-      ~data:(Session.create participant);
-    Deferred.return ()
-  | None ->
-    Hashtbl.add_exn (* repetitive? *)
-      t.participant_sessions
-      ~key:participant
-      ~data:(Session.create participant);
-    Deferred.return ()
+  let%bind () =
+    match old_session with
+    | Some session -> clean_up_session t session
+    | None -> Deferred.return ()
+  in
+  Hashtbl.add_exn
+    t.participant_sessions
+    ~key:participant
+    ~data:(Session.create participant);
+  Deferred.return ()
 ;;
 
 let dispatch_event t (event : Exchange_event.t) =
@@ -110,7 +106,9 @@ let dispatch_event t (event : Exchange_event.t) =
       ; symbol = _
       ; remaining_size = _
       ; reason = _
-      } ->
+      ; client_order_id = _
+      }
+  | Cancel_reject { participant; client_order_id = _; reason = _ } ->
     push_to_session t participant event
   | Fill
       { fill_id = _
@@ -120,8 +118,10 @@ let dispatch_event t (event : Exchange_event.t) =
       ; aggressor_order_id = _
       ; aggressor_participant
       ; aggressor_side = _
+      ; aggressor_client_order_id = _
       ; resting_order_id = _
       ; resting_participant
+      ; resting_client_order_id = _
       } ->
     push_to_session t aggressor_participant event;
     push_to_session t resting_participant event

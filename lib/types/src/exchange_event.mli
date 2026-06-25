@@ -21,9 +21,15 @@ type t =
       ; remaining_size : Size.t
       (** Size that was still unfilled when the order was cancelled. *)
       ; reason : Cancel_reason.t
+      ; client_order_id : Client_order_id.t
       }
   | Order_reject of
       { request : Order.Request.t
+      ; reason : string
+      }
+  | Cancel_reject of
+      { participant : Participant.t
+      ; client_order_id : Client_order_id.t
       ; reason : string
       }
   | Best_bid_offer_update of

@@ -66,7 +66,7 @@ let%expect_test "feeding sample events populates the display" =
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
     FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     BBO AAPL bid=$149.90 x100 ask=$150.10 x200
     TRADE AAPL $150.00 x100
@@ -133,7 +133,7 @@ let%expect_test "pressing 1 toggles the order-lifecycle category off and \
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
     FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     BBO AAPL bid=$149.90 x100 ask=$150.10 x200
     TRADE AAPL $150.00 x100
@@ -155,7 +155,7 @@ let%expect_test "pressing 2 toggles trade; 3 toggles market-data" =
     Substring:  (empty)
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     ──────────────────────────────────────────────────────────────────────
     Footer:      q=quit  r=reset  1-3=categories  /=substring  a=auto-scroll
@@ -195,7 +195,7 @@ let%expect_test "pressing / enters editing mode with empty buffer" =
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
     FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     BBO AAPL bid=$149.90 x100 ask=$150.10 x200
     TRADE AAPL $150.00 x100
@@ -257,7 +257,7 @@ let%expect_test "Escape cancels edit mode and reverts the buffer" =
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
     FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     BBO AAPL bid=$149.90 x100 ask=$150.10 x200
     TRADE AAPL $150.00 x100
@@ -319,7 +319,7 @@ let%expect_test "pressing r clears every filter back to defaults" =
     ──────────────────────────────────────────────────────────────────────
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
     FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
+    client_id=1 CANCELLED id=1 AAPL remaining=50 reason=IOC_REMAINDER
     REJECTED AAPL BUY 100@$150.00 reason=unknown symbol
     BBO AAPL bid=$149.90 x100 ask=$150.10 x200
     TRADE AAPL $150.00 x100

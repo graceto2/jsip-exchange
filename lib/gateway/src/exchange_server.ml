@@ -83,7 +83,7 @@ let start ~symbols ~port () =
             Rpc_protocol.session_feed_rpc
             (fun (state : Connection_state.t) () ->
                match state.session with
-               | None -> failwith "not logged in"
+               | None -> return (Error (Error.of_string "not logged in"))
                | Some session -> return (Ok (Session.reader session)))
         ]
       ~on_unknown_rpc:`Close_connection
