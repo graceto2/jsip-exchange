@@ -10,6 +10,8 @@ let print_parse line =
     print_endline [%string "%{req#Order.Request}"]
   | Ok (Exchange_command.Book symb) | Ok (Exchange_command.Subscribe symb) ->
     print_endline [%string "%{symb#Symbol}"]
+  | Ok (Exchange_command.Cancel cancel_req) ->
+    print_endline [%string "%{cancel_req#Order.Cancel_request}"]
 ;;
 
 let%expect_test "parse: basic subscribe" =
@@ -54,15 +56,12 @@ let%expect_test "parse: with explicit DAY" =
   [%expect {| SELL 1 AAPL 200@$151.00 DAY as anonymous |}]
 ;;
 
-let%expect_test "parse: with participant" =
-  print_parse "BUY 1 AAPL 100 150.00 as Alice";
-  [%expect {| BUY 1 AAPL 100@$150.00 DAY as Alice |}]
-;;
+(* let%expect_test "parse: with participant" = print_parse "BUY 1 AAPL 100
+   150.00 as Alice"; [%expect {| BUY 1 AAPL 100@$150.00 DAY as Alice |}] ;;
 
-let%expect_test "parse: with TIF and participant" =
-  print_parse "SELL 1 GOOG 75 2800.50 IOC as Bob";
-  [%expect {| SELL 1 GOOG 75@$2800.50 IOC as Bob |}]
-;;
+   let%expect_test "parse: with TIF and participant" = print_parse "SELL 1
+   GOOG 75 2800.50 IOC as Bob";
+   [%expect {| SELL 1 GOOG 75@$2800.50 IOC as Bob |}] ;; *)
 
 let%expect_test "parse: symbol is uppercased" =
   print_parse "BUY 1 aapl 100 150.00";
@@ -102,10 +101,8 @@ let%expect_test "parse error: missing fields" =
   print_parse "BUY";
   [%expect
     {|
-    (Failure
-     "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC] [as <name>]")
-    (Failure
-     "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC] [as <name>]")
+    (Failure "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]")
+    (Failure "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]")
     |}]
 ;;
 
@@ -153,20 +150,12 @@ let%expect_test "default participant: used when none specified" =
   | _ -> [%expect.unreachable]
 ;;
 
-let%expect_test "default participant: overridden by explicit 'as'" =
-  let default = Participant.of_string "DefaultTrader" in
-  let req =
-    Exchange_command.parse
-      ~default_participant:default
-      "BUY 1 AAPL 100 150.00 as Alice"
-    |> ok_exn
-  in
-  match req with
-  | Submit order ->
-    print_endline [%string "participant=%{order.participant#Participant}"];
-    [%expect {| participant=Alice |}]
-  | _ -> [%expect.unreachable]
-;;
+(* let%expect_test "default participant: overridden by explicit 'as'" = let
+   default = Participant.of_string "DefaultTrader" in let req =
+   Exchange_command.parse ~default_participant:default "BUY 1 AAPL 100 150.00
+   as Alice" |> ok_exn in match req with | Submit order -> print_endline
+   [%string "participant=%{order.participant#Participant}"];
+   [%expect {| participant=Alice |}] | _ -> [%expect.unreachable] ;; *)
 
 (* --- Round-trip: parse then format --- *)
 
@@ -179,7 +168,10 @@ let%expect_test "round-trip: parse a command, submit, format result" =
     (Harness.sell ~price_cents:15000 ~participant:Harness.bob ());
   (* Parse a buy command from text and submit it *)
   let request =
-    Exchange_command.parse "BUY 1 AAPL 100 150.00 as Alice" |> ok_exn
+    Exchange_command.parse
+      ~default_participant:Harness.alice
+      "BUY 1 AAPL 100 150.00"
+    |> ok_exn
   in
   match request with
   | Submit order ->
@@ -187,12 +179,12 @@ let%expect_test "round-trip: parse a command, submit, format result" =
     print_endline (Event_protocol.format_events events);
     [%expect
       {|
-    ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
-    BBO AAPL bid=- ask=$150.00 x100
-    ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    TRADE AAPL $150.00 x100
-    BBO AAPL bid=- ask=-
-    |}]
+      ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
+      BBO AAPL bid=- ask=$150.00 x100
+      ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
+      FILL fill_id=1 aggressor_client_oid=1 resting_client_oid=0 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      TRADE AAPL $150.00 x100
+      BBO AAPL bid=- ask=-
+      |}]
   | _ -> [%expect.unreachable]
 ;;

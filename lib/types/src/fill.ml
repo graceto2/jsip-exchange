@@ -31,19 +31,19 @@ let to_string
     t)
   =
   sprintf
-    "fill_id=%d %s %s x%d aggressor=%s(%s) aggressor_order_id=%s %s \
-     resting=%s(%s) resting_order_id=%s"
+    "fill_id=%d aggressor_client_oid=%s resting_client_oid=%s %s %s x%d \
+     aggressor=%s(%s) %s resting=%s(%s)"
     fill_id
+    (Client_order_id.to_string aggressor_client_order_id)
+    (Client_order_id.to_string resting_client_order_id)
     (Symbol.to_string symbol)
     (Price.to_string_dollar price)
     (Size.to_int size)
     (Order_id.to_string aggressor_order_id)
     (Participant.to_string aggressor_participant)
-    (Client_order_id.to_string aggressor_client_order_id)
     (Side.to_string aggressor_side)
     (Order_id.to_string resting_order_id)
     (Participant.to_string resting_participant)
-    (Client_order_id.to_string resting_client_order_id)
 ;;
 
 (* let x : Int.t = 5 let y : String.t = "6" let output_string : string =

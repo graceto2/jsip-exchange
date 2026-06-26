@@ -3,6 +3,8 @@ open! Async
 open Jsip_types
 open Jsip_gateway
 
+let fill_client_oid = ref 0
+
 module Config = struct
   type t =
     { participant : Participant.t
@@ -11,7 +13,6 @@ module Config = struct
     ; half_spread_cents : int
     ; size_per_level : int
     ; num_levels : int
-    ; client_order_id : Client_order_id.t
     }
   [@@deriving sexp_of]
 end
@@ -35,6 +36,7 @@ let seed_book (config : Config.t) conn =
     ~f:(fun level ->
       let offset = config.half_spread_cents + level in
       let%bind () =
+        fill_client_oid := !fill_client_oid + 1;
         submit
           ({ symbol = config.symbol
            ; participant = config.participant
@@ -42,10 +44,11 @@ let seed_book (config : Config.t) conn =
            ; price = Price.of_int_cents (config.fair_value_cents - offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = config.client_order_id
+           ; client_order_id = !fill_client_oid
            }
            : Order.Request.t)
       and () =
+        fill_client_oid := !fill_client_oid + 1;
         submit
           ({ symbol = config.symbol
            ; participant = config.participant
@@ -53,7 +56,7 @@ let seed_book (config : Config.t) conn =
            ; price = Price.of_int_cents (config.fair_value_cents + offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = config.client_order_id
+           ; client_order_id = !fill_client_oid
            }
            : Order.Request.t)
       in

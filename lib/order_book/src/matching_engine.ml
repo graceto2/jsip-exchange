@@ -83,21 +83,14 @@ let submit t (request : Order.Request.t) =
   | Some book ->
     let order_id = Order_id.Generator.next t.order_id_gen in
     let order = Order.create request ~order_id in
+    let client_order_id = request.client_order_id in
     let accepted = Exchange_event.Order_accept { order_id; request } in
     let rejected =
       Exchange_event.Order_reject
         { request; reason = "Client order ID already in use" }
     in
-    (* Snapshot BBO before matching so we can detect changes. *)
-    let bbo_before = Order_book.best_bid_offer book in
-    (* Match *)
-    let fill_events, next_fill_id =
-      match_loop t ~book ~order ~fill_id:t.next_fill_id
-    in
-    let client_order_id = request.client_order_id in
+    (* check if valid client_order_id *)
     let prev_order = Hashtbl.find t.client_order_ids client_order_id in
-    t.next_fill_id <- next_fill_id;
-    (* Post-match: rest on book or cancel unfilled remainder. *)
     (match prev_order with
      | Some _ -> [ rejected ]
      | None ->
@@ -106,6 +99,14 @@ let submit t (request : Order.Request.t) =
          t.server_id_to_client_id
          ~key:order_id
          ~data:client_order_id;
+       (* Snapshot BBO before matching so we can detect changes. *)
+       let bbo_before = Order_book.best_bid_offer book in
+       (* Match *)
+       let fill_events, next_fill_id =
+         match_loop t ~book ~order ~fill_id:t.next_fill_id
+       in
+       t.next_fill_id <- next_fill_id;
+       (* Post-match: rest on book or cancel unfilled remainder. *)
        let post_events =
          if Size.( > ) (Order.remaining_size order) Size.zero
          then (
@@ -138,7 +139,62 @@ let submit t (request : Order.Request.t) =
        List.concat [ [ accepted ]; fill_events; post_events; bbo_events ])
 ;;
 
-(* [ Exchange_event.Order_reject { request; reason = "Client order ID already in use" } ] *)
+let cancel t (cancel_request : Order.Cancel_request.t) =
+  let client_order_id = cancel_request.client_order_id in
+  let participant = cancel_request.participant in
+  let order = Hashtbl.find t.client_order_ids client_order_id in
+  (* find order in client_order_id, which contains ALL orders that have been
+     successfully submitted so far, even cancelled/filled ones *)
+  match order with
+  | None ->
+    [ Exchange_event.Cancel_reject
+        { participant
+        ; client_order_id
+        ; reason = "Order with that ID was never placed"
+        }
+    ]
+  | Some order ->
+    (match Map.find t.books (Order.symbol order) with
+     (* find order in our order book -- here, filled/cancelled orders have
+        been removed *)
+     | None ->
+       [ Exchange_event.Cancel_reject
+           { participant; client_order_id; reason = "Order not found" }
+       ]
+     | Some book ->
+       let symbol = Order.symbol order in
+       let remaining_size = Order.remaining_size order in
+       let order_id = Order.order_id order in
+       let bbo_before = Order_book.best_bid_offer book in
+       (match Order_book.find book order_id with
+        | None ->
+          [ Exchange_event.Cancel_reject
+              { participant; client_order_id; reason = "Order not found" }
+          ]
+        | Some order ->
+          let cancelled =
+            Exchange_event.Order_cancel
+              { order_id
+              ; participant
+              ; symbol
+              ; remaining_size
+              ; reason = Cancel_reason.Participant_requested
+              ; client_order_id
+              }
+          in
+          Order_book.remove book order_id;
+          (* emit BBO update if cancelled order was at best price *)
+          let bbo_after = Order_book.best_bid_offer book in
+          let bbo_events =
+            if Bbo.equal bbo_before bbo_after
+            then []
+            else
+              [ Exchange_event.Best_bid_offer_update
+                  { symbol = Order.symbol order; bbo = bbo_after }
+              ]
+          in
+          List.concat [ [ cancelled ]; bbo_events ]))
+;;
 
 (* pt 1 ex 5: did not finish *)
 (* let remove_day_orders_on_side order_book ~side = let day_orders =

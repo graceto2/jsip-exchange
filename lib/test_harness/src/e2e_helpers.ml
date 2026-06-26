@@ -45,3 +45,8 @@ let rpc_submit client request =
 let rpc_book client symbol =
   Rpc.Rpc.dispatch_exn Rpc_protocol.book_query_rpc client.conn symbol
 ;;
+
+let rpc_cancel client cancel_req =
+  Rpc.Rpc.dispatch_exn Rpc_protocol.cancel_order_rpc client.conn cancel_req
+  >>| ok_exn
+;;

@@ -12,6 +12,7 @@ let alice = Participant.of_string "Alice"
 let bob = Participant.of_string "Bob"
 let charlie = Participant.of_string "Charlie"
 let market_maker = Participant.of_string "MarketMaker"
+let next_fill_id = ref 0
 
 (* --- Harness --- *)
 
@@ -32,10 +33,11 @@ let make_request
   ?(symbol = aapl)
   ?(participant = alice)
   ?(time_in_force = Time_in_force.Day)
-  ?(client_order_id = 1)
+  ?(client_order_id = !next_fill_id)
   ()
   : Order.Request.t
   =
+  next_fill_id := !next_fill_id + 1;
   { symbol
   ; participant
   ; side
@@ -133,10 +135,10 @@ let sample_events : Exchange_event.t list =
       ; aggressor_order_id = Order_id.For_testing.of_int 2
       ; aggressor_participant = alice
       ; aggressor_side = Buy
-      ; aggressor_client_order_id = 18
+      ; aggressor_client_order_id = 1
       ; resting_order_id = Order_id.For_testing.of_int 1
       ; resting_participant = bob
-      ; resting_client_order_id = 12
+      ; resting_client_order_id = 0
       }
   ; Order_cancel
       { order_id = Order_id.For_testing.of_int 1
@@ -144,7 +146,7 @@ let sample_events : Exchange_event.t list =
       ; symbol = aapl
       ; remaining_size = Size.of_int 50
       ; reason = Ioc_remainder
-      ; client_order_id = 1
+      ; client_order_id = 2
       }
   ; Order_reject { request = order_request; reason = "unknown symbol" }
   ; Best_bid_offer_update

@@ -54,6 +54,17 @@ let start ~symbols ~port () =
                    (Or_error.error_string "Error: not logged in")
                | Some participant ->
                  handle_submit ~request_writer { request with participant })
+        ; Rpc.Rpc.implement
+            Rpc_protocol.cancel_order_rpc
+            (fun (state : Connection_state.t) cancel_request ->
+               match Connection_state.participant state with
+               | None ->
+                 Deferred.return
+                   (Or_error.error_string "Error: not logged in")
+                 (* factor out log in function *)
+               | Some _ ->
+                 let events = Matching_engine.cancel engine cancel_request in
+                 return (Ok (Dispatcher.dispatch dispatcher events)))
         ; Rpc.Rpc.implement' Rpc_protocol.book_query_rpc (fun state symbol ->
             ignore state;
             Matching_engine.book engine symbol

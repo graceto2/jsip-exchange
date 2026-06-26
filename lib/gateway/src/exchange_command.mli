@@ -29,6 +29,7 @@ open! Jsip_types
 
 type t =
   | Submit of Order.Request.t
+  | Cancel of Order.Cancel_request.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
@@ -42,7 +43,4 @@ type t =
 (* val parse_command_with_default_participant : string ->
    default:Participant.t -> (Order.Request.t, string) Result.t *)
 
-(* optional parameter should be named default_participant. could not figure
-   out how to get it to work with overlapping default_participant variable
-   defined in .ml file *)
 val parse : ?default_participant:Participant.t -> string -> t Or_error.t

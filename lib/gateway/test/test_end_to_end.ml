@@ -32,8 +32,8 @@ let%expect_test "e2e: two clients trade with each other" =
     [%expect
       {|
       [for Alice] ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=1 resting_client_oid=0 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=1 resting_client_oid=0 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       |}];
     return ())
 ;;
@@ -72,10 +72,10 @@ let%expect_test "e2e: three clients, sequential orders, shared book" =
     [%expect
       {|
       [for Alice] ACCEPTED id=3 AAPL BUY 80@$150.10 DAY
-      [for Alice] FILL fill_id=1 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Alice] FILL fill_id=2 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
-      [for Bob] FILL fill_id=1 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Charlie] FILL fill_id=2 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=4 resting_client_oid=2 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=2 aggressor_client_oid=4 resting_client_oid=3 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=4 resting_client_oid=2 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Charlie] FILL fill_id=2 aggressor_client_oid=4 resting_client_oid=3 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
       |}];
     (* Verify book state *)
     let%bind book = rpc_book alice Harness.aapl in
@@ -131,8 +131,8 @@ let%expect_test "e2e: market data subscriber receives trade and BBO updates" =
     [%expect
       {|
       [for Alice] ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=6 resting_client_oid=5 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=6 resting_client_oid=5 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       [MD Subscriber] TRADE AAPL $150.00 x100
       [MD Subscriber] BBO AAPL bid=- ask=-
       |}];
@@ -280,12 +280,12 @@ let%expect_test "e2e: audit log subscriber sees full unfiltered stream \
     [%expect
       {|
       [AUDIT] ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-      [AUDIT] FILL fill_id=1 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [AUDIT] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
       [AUDIT] TRADE AAPL $150.00 x100
       [AUDIT] BBO AAPL bid=- ask=-
       [for Alice] ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
       |}];
     return ())
 ;;
@@ -325,4 +325,130 @@ let%expect_test "dispatcher: closing a subscriber's reader removes the \
           (Dispatcher.For_testing.audit_subscriber_count dispatcher : int)];
   [%expect {| ("after closing reader_b" (count 0)) |}];
   return ()
+;;
+
+(* ---------------------------------------------------------------- *)
+(* Cancel order tests *)
+(* ---------------------------------------------------------------- *)
+
+let%expect_test "submit with client order ID, then cancel by that ID" =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind alice = connect_as ~port Harness.alice in
+    let%bind () =
+      rpc_submit
+        alice
+        (Harness.sell
+           ~price_cents:15000
+           ~participant:Harness.alice
+           ~client_order_id:1
+           ())
+    in
+    [%expect {| [for Alice] ACCEPTED id=1 AAPL SELL 100@$150.00 DAY |}];
+    (* alice cancels order she just placed - should recieve BLAH *)
+    let%bind () =
+      rpc_cancel alice { participant = Harness.alice; client_order_id = 1 }
+    in
+    [%expect
+      {| [for Alice] CANCELLED order_id=1 client_oid=1 AAPL remaining=100 reason=PARTICIPANT_REQUESTED |}];
+    return ())
+;;
+
+let%expect_test "cancel an already-filled order - should produce not found \
+                 rejection"
+  =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind alice = connect_as ~port Harness.alice in
+    let%bind bob = connect_as ~port Harness.bob in
+    (* Bob places a sell *)
+    let%bind () =
+      rpc_submit
+        bob
+        (Harness.sell
+           ~price_cents:15000
+           ~participant:Harness.bob
+           ~client_order_id:2090
+           ())
+    in
+    [%expect {| [for Bob] ACCEPTED id=1 AAPL SELL 100@$150.00 DAY |}];
+    (* Alice places a buy — should cross *)
+    let%bind () =
+      rpc_submit
+        alice
+        (Harness.buy ~price_cents:15000 ~client_order_id:354 ())
+    in
+    [%expect
+      {|
+      [for Alice] ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
+      [for Alice] FILL fill_id=1 aggressor_client_oid=354 resting_client_oid=2090 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=354 resting_client_oid=2090 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      |}];
+    let%bind () =
+      rpc_cancel alice { participant = Harness.alice; client_order_id = 354 }
+    in
+    [%expect
+      {| [for Alice] REJECTED cancel request with client_oid=354 reason=Order not found |}];
+    let%bind () =
+      rpc_cancel bob { participant = Harness.bob; client_order_id = 2090 }
+    in
+    [%expect
+      {| [for Bob] REJECTED cancel request with client_oid=2090 reason=Order not found |}];
+    return ())
+;;
+
+let%expect_test "cancel a non existent order" =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind alice = connect_as ~port Harness.alice in
+    (* alice tries to cancel *)
+    let%bind () =
+      rpc_cancel alice { participant = Harness.alice; client_order_id = 354 }
+    in
+    [%expect
+      {| [for Alice] REJECTED cancel request with client_oid=354 reason=Order with that ID was never placed |}];
+    return ())
+;;
+
+let%expect_test "canceled best offer, should emit BBO update" =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind sub = connect_as ~port (Participant.of_string "Sub") in
+    let%bind bob = connect_as ~port Harness.bob in
+    let%bind result =
+      Rpc.Pipe_rpc.dispatch
+        Rpc_protocol.market_data_rpc
+        (connection sub)
+        [ Harness.aapl ]
+    in
+    let reader =
+      match result with
+      | Ok (Ok (reader, _id)) -> reader
+      | _ -> failwith "subscribe failed"
+    in
+    don't_wait_for
+      (Pipe.iter_without_pushback reader ~f:(fun event ->
+         let e = Event_protocol.format_event event in
+         print_endline [%string "[MD Subscriber] %{e}"]));
+    (* Post a sell *)
+    let%bind () =
+      rpc_submit
+        bob
+        (Harness.sell
+           ~price_cents:15000
+           ~participant:Harness.bob
+           ~client_order_id:293
+           ())
+    in
+    [%expect
+      {|
+      [for Bob] ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
+      [MD Subscriber] BBO AAPL bid=- ask=$150.00 x100
+      |}];
+    (* cancel bob's sell *)
+    let%bind () =
+      rpc_cancel bob { participant = Harness.bob; client_order_id = 293 }
+    in
+    [%expect
+      {|
+      [for Bob] CANCELLED order_id=1 client_oid=293 AAPL remaining=100 reason=PARTICIPANT_REQUESTED
+      [MD Subscriber] BBO AAPL bid=- ask=-
+      |}];
+    return ())
 ;;

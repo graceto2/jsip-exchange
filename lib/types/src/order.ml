@@ -1,5 +1,19 @@
 open! Core
 
+module Cancel_request = struct
+  type t =
+    { participant : Participant.t
+    ; client_order_id : Client_order_id.t
+    }
+  [@@deriving sexp, bin_io]
+
+  let to_string { participant; client_order_id } =
+    [%string
+      "%{participant#Participant} wants to cancel \
+       %{client_order_id#Client_order_id}"]
+  ;;
+end
+
 module Request = struct
   type t =
     { symbol : Symbol.t

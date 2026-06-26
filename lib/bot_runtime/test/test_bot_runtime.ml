@@ -119,8 +119,9 @@ let%expect_test "feed_event forwards every event verbatim to on_event" =
        ((bid (((price 14990) (size 100)))) (ask (((price 15010) (size 200)))))))
      (Fill
       ((fill_id 1) (symbol AAPL) (price 15000) (size 50) (aggressor_order_id 1)
-       (aggressor_participant Alice) (aggressor_side Buy) (resting_order_id 2)
-       (resting_participant Bob)))
+       (aggressor_participant Alice) (aggressor_side Buy)
+       (aggressor_client_order_id 6) (resting_order_id 2)
+       (resting_participant Bob) (resting_client_order_id 36)))
      (Order_accept (order_id 1)
       (request
        ((symbol AAPL) (participant Alice) (side Buy) (price 15000) (size 10)

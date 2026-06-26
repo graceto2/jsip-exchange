@@ -13,7 +13,6 @@ let default_config : Market_maker.Config.t =
   ; half_spread_cents = 10
   ; size_per_level = 100
   ; num_levels = 3
-  ; client_order_id = 13
   }
 ;;
 

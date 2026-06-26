@@ -48,7 +48,7 @@ let%expect_test "exact cross at same price" =
     {|
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+    FILL fill_id=1 aggressor_client_oid=4 resting_client_oid=3 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
     |}]
 ;;
 
@@ -60,7 +60,7 @@ let%expect_test "buy crosses at resting price, not aggressor price" =
     {|
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$151.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+    FILL fill_id=1 aggressor_client_oid=6 resting_client_oid=5 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
     |}]
 ;;
 
@@ -74,7 +74,7 @@ let%expect_test "partial fill: buy is larger than resting sell" =
     {|
     ACCEPTED id=1 AAPL SELL 60@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x60 aggressor=2(Alice) BUY resting=1(Bob)
+    FILL fill_id=1 aggressor_client_oid=8 resting_client_oid=7 AAPL $150.00 x60 aggressor=2(Alice) BUY resting=1(Bob)
     |}];
   (* Remainder rests on the book *)
   Harness.print_book t Harness.aapl;
@@ -106,8 +106,8 @@ let%expect_test "aggressor sweeps multiple resting orders" =
     ACCEPTED id=1 AAPL SELL 50@$150.00 DAY
     ACCEPTED id=2 AAPL SELL 80@$150.00 DAY
     ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
-    FILL fill_id=2 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=2(Charlie)
+    FILL fill_id=1 aggressor_client_oid=11 resting_client_oid=9 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
+    FILL fill_id=2 aggressor_client_oid=11 resting_client_oid=10 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=2(Charlie)
     |}]
 ;;
 
@@ -121,7 +121,7 @@ let%expect_test "IOC: no match means immediate cancel" =
   [%expect
     {|
     ACCEPTED id=1 AAPL BUY 100@$150.00 IOC
-    client_id=1 CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
+    CANCELLED order_id=1 client_oid=12 AAPL remaining=100 reason=IOC_REMAINDER
     |}]
 ;;
 
@@ -135,8 +135,8 @@ let%expect_test "IOC: partial fill then cancel remainder" =
     {|
     ACCEPTED id=1 AAPL SELL 40@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$150.00 IOC
-    FILL fill_id=1 AAPL $150.00 x40 aggressor=2(Alice) BUY resting=1(Bob)
-    client_id=1 CANCELLED id=2 AAPL remaining=60 reason=IOC_REMAINDER
+    FILL fill_id=1 aggressor_client_oid=14 resting_client_oid=13 AAPL $150.00 x40 aggressor=2(Alice) BUY resting=1(Bob)
+    CANCELLED order_id=2 client_oid=14 AAPL remaining=60 reason=IOC_REMAINDER
     |}]
 ;;
 
@@ -150,7 +150,7 @@ let%expect_test "IOC: full fill means no cancel event" =
     {|
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     ACCEPTED id=2 AAPL BUY 100@$150.00 IOC
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+    FILL fill_id=1 aggressor_client_oid=16 resting_client_oid=15 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
     |}]
 ;;
 
@@ -161,7 +161,7 @@ let%expect_test "IOC: does not rest on book" =
   [%expect
     {|
     ACCEPTED id=1 AAPL BUY 100@$150.00 IOC
-    client_id=1 CANCELLED id=1 AAPL remaining=100 reason=IOC_REMAINDER
+    CANCELLED order_id=1 client_oid=17 AAPL remaining=100 reason=IOC_REMAINDER
     === AAPL ===
       BIDS: (empty)
       ASKS: (empty)
@@ -249,7 +249,7 @@ let%expect_test "price priority: naive impl matches first-found, not best" =
     ACCEPTED id=1 AAPL SELL 100@$10.00 DAY
     ACCEPTED id=2 AAPL SELL 100@$10.05 DAY
     ACCEPTED id=3 AAPL BUY 100@$10.05 DAY
-    FILL fill_id=1 AAPL $10.00 x100 aggressor=3(Alice) BUY resting=1(Charlie)
+    FILL fill_id=1 aggressor_client_oid=23 resting_client_oid=21 AAPL $10.00 x100 aggressor=3(Alice) BUY resting=1(Charlie)
     |}]
 ;;
 
@@ -368,7 +368,7 @@ let%expect_test "scenario: two participants trade, book reflects state" =
     ACCEPTED id=3 AAPL SELL 100@$150.10 DAY
     ACCEPTED id=4 AAPL SELL 150@$150.20 DAY
     ACCEPTED id=5 AAPL BUY 50@$150.10 DAY
-    FILL fill_id=1 AAPL $150.10 x50 aggressor=5(Charlie) BUY resting=3(Bob)
+    FILL fill_id=1 aggressor_client_oid=38 resting_client_oid=36 AAPL $150.10 x50 aggressor=5(Charlie) BUY resting=3(Bob)
     === AAPL ===
       BIDS:
         $149.90 x100
@@ -405,10 +405,10 @@ let%expect_test "scenario: aggressive IOC sweeps entire book" =
     ACCEPTED id=2 AAPL SELL 50@$150.10 DAY
     ACCEPTED id=3 AAPL SELL 50@$150.20 DAY
     ACCEPTED id=4 AAPL BUY 200@$150.20 IOC
-    FILL fill_id=1 AAPL $150.00 x50 aggressor=4(Alice) BUY resting=1(Bob)
-    FILL fill_id=2 AAPL $150.10 x50 aggressor=4(Alice) BUY resting=2(Charlie)
-    FILL fill_id=3 AAPL $150.20 x50 aggressor=4(Alice) BUY resting=3(Bob)
-    client_id=1 CANCELLED id=4 AAPL remaining=50 reason=IOC_REMAINDER
+    FILL fill_id=1 aggressor_client_oid=42 resting_client_oid=39 AAPL $150.00 x50 aggressor=4(Alice) BUY resting=1(Bob)
+    FILL fill_id=2 aggressor_client_oid=42 resting_client_oid=40 AAPL $150.10 x50 aggressor=4(Alice) BUY resting=2(Charlie)
+    FILL fill_id=3 aggressor_client_oid=42 resting_client_oid=41 AAPL $150.20 x50 aggressor=4(Alice) BUY resting=3(Bob)
+    CANCELLED order_id=4 client_oid=42 AAPL remaining=50 reason=IOC_REMAINDER
     === AAPL ===
       BIDS: (empty)
       ASKS: (empty)
@@ -459,33 +459,36 @@ let%expect_test "scenario: fill IDs are globally sequential" =
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     ACCEPTED id=2 TSLA SELL 100@$200.00 DAY
     ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+    FILL fill_id=1 aggressor_client_oid=48 resting_client_oid=46 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
     ACCEPTED id=4 TSLA BUY 100@$200.00 DAY
-    FILL fill_id=2 TSLA $200.00 x100 aggressor=4(Alice) BUY resting=2(Charlie)
+    FILL fill_id=2 aggressor_client_oid=49 resting_client_oid=47 TSLA $200.00 x100 aggressor=4(Alice) BUY resting=2(Charlie)
     |}]
 ;;
 
-(* -- test duplicate id detection -- *)
+(* ================================================================ *)
+(* Duplicate id detection *)
+(* ================================================================ *)
 
-let%expect_test "duplicate detection: alice can't request order with two \
-                 different ids"
+let%expect_test "duplicate detection: alice can't make duplicate client \
+                 order ids"
   =
   let t = Harness.create () in
   submit_
     t
     (Harness.sell
        ~price_cents:15000
-       ~participant:Harness.bob
-       ()
-       ~client_order_id:2);
+       ~participant:Harness.alice
+       ~client_order_id:1
+       ());
   submit_
     t
     (Harness.sell
        ~price_cents:1000
-       ~participant:Harness.bob
-       ()
-       ~client_order_id:1);
-  [%expect {|
+       ~participant:Harness.alice
+       ~client_order_id:1
+       ());
+  [%expect
+    {|
     ACCEPTED id=1 AAPL SELL 100@$150.00 DAY
     REJECTED AAPL SELL 100@$10.00 reason=Client order ID already in use
     |}]

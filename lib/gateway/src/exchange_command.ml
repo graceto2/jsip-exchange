@@ -13,6 +13,7 @@ end
 
 type t =
   | Submit of Order.Request.t
+  | Cancel of Order.Cancel_request.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
@@ -54,8 +55,6 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
     in
     let%bind participant =
       match rest with
-      | "as" :: name :: _ | "AS" :: name :: _ ->
-        Ok (Participant.of_string name)
       | [] ->
         (match default_participant with
          | Some p -> Ok p
@@ -76,9 +75,7 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
           }
           : Order.Request.t))
   | _ ->
-    Error
-      "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC] [as \
-       <name>]"
+    Error "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]"
 ;;
 
 let parse_buy_or_sell_exn ?default_participant list ~side =

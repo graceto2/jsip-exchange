@@ -9,6 +9,15 @@ open! Core
 
 (** An order as submitted by a participant (before the exchange assigns an
     order ID). This is what the gateway receives. *)
+module Cancel_request : sig
+  type t =
+    { participant : Participant.t
+    ; client_order_id : Client_order_id.t
+    }
+  [@@deriving sexp, bin_io]
+
+  val to_string : t -> string
+end
 
 module Request : sig
   type t =

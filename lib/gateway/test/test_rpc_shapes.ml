@@ -35,6 +35,18 @@ let%expect_test "submit-order RPC" =
   return ()
 ;;
 
+let%expect_test "cancel-order RPC" =
+  print_s
+    [%sexp
+      (Rpc.Rpc.shapes Rpc_protocol.cancel_order_rpc
+       : Async_rpc_kernel.Rpc_shapes.t)];
+  [%expect {|
+    (Rpc (query 738560148b00517532a69284c2e68c61)
+     (response 27f76252e5181aab209cd62aa6e42268))
+    |}];
+  return ()
+;;
+
 let%expect_test "book-query RPC" =
   print_s
     [%sexp
@@ -57,7 +69,7 @@ let%expect_test "market-data RPC" =
     {|
     (Streaming_rpc (query 296be80010ace497614f92952e5510c4)
      (initial_response 86ba5df747eec837f0b391dd49f33f9e)
-     (update_response c7f8a3ee998379ec58ddc84d36785854)
+     (update_response ff5dd26ff7c861cb2120faf0c3a4d46f)
      (error 52966f4a49a77bfdff668e9cc61511b3))
     |}];
   return ()
@@ -72,10 +84,33 @@ let%expect_test "audit-log RPC" =
     {|
     (Streaming_rpc (query 86ba5df747eec837f0b391dd49f33f9e)
      (initial_response 86ba5df747eec837f0b391dd49f33f9e)
-     (update_response c7f8a3ee998379ec58ddc84d36785854)
+     (update_response ff5dd26ff7c861cb2120faf0c3a4d46f)
      (error 52966f4a49a77bfdff668e9cc61511b3))
     |}];
   return ()
 ;;
 
-(* add block for login_rpc, rpc_submit *)
+let%expect_test "login RPC" =
+  print_s
+    [%sexp
+      (Rpc.Rpc.shapes Rpc_protocol.login_rpc : Async_rpc_kernel.Rpc_shapes.t)];
+  [%expect {|
+    (Rpc (query d9a8da25d5656b016fb4dbdc2e4197fb)
+     (response a77b3b6e3753246ce7ec1f3467c939eb))
+    |}];
+  return ()
+;;
+
+let%expect_test "session-feed RPC" =
+  print_s
+    [%sexp
+      (Rpc.Pipe_rpc.shapes Rpc_protocol.session_feed_rpc
+       : Async_rpc_kernel.Rpc_shapes.t)];
+  [%expect {|
+    (Streaming_rpc (query 86ba5df747eec837f0b391dd49f33f9e)
+     (initial_response 86ba5df747eec837f0b391dd49f33f9e)
+     (update_response ff5dd26ff7c861cb2120faf0c3a4d46f)
+     (error 52966f4a49a77bfdff668e9cc61511b3))
+    |}];
+  return ()
+;;

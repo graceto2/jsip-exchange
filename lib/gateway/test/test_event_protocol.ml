@@ -102,7 +102,7 @@ let%expect_test "format_event: all event types" =
             ; price = Price.of_int_cents 15000
             ; size = Size.of_int 100
             ; time_in_force = Day
-            ; client_order_id = 1
+            ; client_order_id = 0
             }
         }
     ; Fill
@@ -113,10 +113,10 @@ let%expect_test "format_event: all event types" =
         ; aggressor_order_id = Order_id.of_string "2"
         ; aggressor_participant = Participant.of_string "Alice"
         ; aggressor_side = Buy
-        ; aggressor_client_order_id = 18
+        ; aggressor_client_order_id = 0
         ; resting_order_id = Order_id.of_string "1"
         ; resting_participant = Participant.of_string "Bob"
-        ; resting_client_order_id = 12
+        ; resting_client_order_id = 1
         }
     ; Order_cancel
         { order_id = Order_id.of_string "3"
@@ -124,7 +124,7 @@ let%expect_test "format_event: all event types" =
         ; symbol = Symbol.of_string "TSLA"
         ; remaining_size = Size.of_int 50
         ; reason = Ioc_remainder
-        ; client_order_id = 3
+        ; client_order_id = 2
         }
     ; Order_reject
         { request =
@@ -134,9 +134,14 @@ let%expect_test "format_event: all event types" =
             ; price = Price.of_int_cents 28000
             ; size = Size.of_int 10
             ; time_in_force = Day
-            ; client_order_id = 1
+            ; client_order_id = 3
             }
         ; reason = "unknown symbol"
+        }
+    ; Cancel_reject
+        { participant = Participant.of_string "Alice"
+        ; client_order_id = 0
+        ; reason = "Couldn't find the order"
         }
     ; Best_bid_offer_update
         { symbol = Symbol.of_string "AAPL"
@@ -167,9 +172,10 @@ let%expect_test "format_event: all event types" =
   [%expect
     {|
     ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
-    FILL fill_id=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-    client_id=3 CANCELLED id=3 TSLA remaining=50 reason=IOC_REMAINDER
+    FILL fill_id=1 aggressor_client_oid=0 resting_client_oid=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+    CANCELLED order_id=3 client_oid=2 TSLA remaining=50 reason=IOC_REMAINDER
     REJECTED GOOG SELL 10@$280.00 reason=unknown symbol
+    REJECTED cancel request with client_oid=0 reason=Couldn't find the order
     BBO AAPL bid=$149.90 x200 ask=$150.10 x100
     BBO AAPL bid=- ask=-
     TRADE AAPL $150.00 x100
