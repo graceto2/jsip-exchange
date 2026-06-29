@@ -54,4 +54,7 @@ val market_data_rpc
 val audit_log_rpc : (unit, Exchange_event.t, Error.t) Rpc.Pipe_rpc.t
 
 val login_rpc : (String.t, Participant.t Or_error.t) Rpc.Rpc.t
+
+(** Delivers order accept/cancel/reject and fill events related to the
+    participant. *)
 val session_feed_rpc : (unit, Exchange_event.t, Error.t) Rpc.Pipe_rpc.t

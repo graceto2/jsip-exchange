@@ -6,7 +6,7 @@ open Jsip_order_book
 type t =
   { engine : Matching_engine.t
   ; dispatcher : Dispatcher.t
-  ; request_writer : Order.Request.t Pipe.Writer.t
+  ; request_writer : Order.Submit.t Pipe.Writer.t
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
   }
@@ -25,15 +25,29 @@ end
 let request_queue_size_budget = 1024
 
 let handle_submit ~request_writer (request : Order.Request.t) =
-  let%map () = Pipe.write_if_open request_writer request in
+  let%map () =
+    Pipe.write_if_open request_writer (Order.Submit.Request request)
+  in
+  Ok ()
+;;
+
+let handle_cancel ~request_writer (cancel_request : Order.Cancel_request.t) =
+  let%map () =
+    Pipe.write_if_open request_writer (Order.Submit.Cancel cancel_request)
+  in
   Ok ()
 ;;
 
 let start_matching_loop ~engine ~dispatcher request_reader =
   don't_wait_for
     (Pipe.iter_without_pushback request_reader ~f:(fun request ->
-       let events = Matching_engine.submit engine request in
-       Dispatcher.dispatch dispatcher events))
+       match request with
+       | Order.Submit.Request request ->
+         let events = Matching_engine.submit engine request in
+         Dispatcher.dispatch dispatcher events
+       | Order.Submit.Cancel cancel_request ->
+         let events = Matching_engine.cancel engine cancel_request in
+         Dispatcher.dispatch dispatcher events))
 ;;
 
 let start ~symbols ~port () =
@@ -62,9 +76,8 @@ let start ~symbols ~port () =
                  Deferred.return
                    (Or_error.error_string "Error: not logged in")
                  (* factor out log in function *)
-               | Some _ ->
-                 let events = Matching_engine.cancel engine cancel_request in
-                 return (Ok (Dispatcher.dispatch dispatcher events)))
+               | Some _participant ->
+                 handle_cancel ~request_writer cancel_request)
         ; Rpc.Rpc.implement' Rpc_protocol.book_query_rpc (fun state symbol ->
             ignore state;
             Matching_engine.book engine symbol

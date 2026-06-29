@@ -45,6 +45,12 @@ module Request = struct
   ;;
 end
 
+module Submit = struct
+  type t =
+    | Cancel of Cancel_request.t
+    | Request of Request.t
+end
+
 type t =
   { order_id : Order_id.t
   ; symbol : Symbol.t

@@ -34,6 +34,12 @@ module Request : sig
   val to_string : t -> string
 end
 
+module Submit : sig
+  type t =
+    | Cancel of Cancel_request.t
+    | Request of Request.t
+end
+
 (** A live order on the exchange, with an ID assigned by the matching engine
     and mutable remaining size. *)
 type t [@@deriving sexp_of, equal, compare]
