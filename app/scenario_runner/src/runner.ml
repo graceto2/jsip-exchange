@@ -24,19 +24,18 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
       connection
       (Participant.to_string spec.participant)
     >>| Or_error.ok_exn
-    (* is this correct way? should we replace spec.participant with
-       participant, or just ignore it *)
   in
-  (* ignore participant; *)
-  let submit request =
-    Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc connection request
+  let submit submit_request =
+    Rpc.Rpc.dispatch_exn
+      Rpc_protocol.submit_order_rpc
+      connection
+      submit_request
   in
-  let cancel order_id =
-    return
-      (Or_error.error_s
-         [%message
-           "Scenario runner: cancel RPC not implemented yet"
-             (order_id : Order_id.t)])
+  let cancel client_order_id =
+    Rpc.Rpc.dispatch_exn
+      Rpc_protocol.cancel_order_rpc
+      connection
+      { participant; client_order_id }
   in
   let bot =
     Bot_runtime.create
@@ -49,6 +48,14 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
       ~cancel
       ~tick_interval:spec.tick_interval
   in
+  let%bind session_feed, _metadata =
+    Rpc.Pipe_rpc.dispatch_exn Rpc_protocol.session_feed_rpc connection ()
+  in
+  don't_wait_for
+    (let%bind () = Pipe.iter session_feed ~f:(Bot_runtime.feed_event bot) in
+     return ());
+  (* in don't_wait_for (let%bind () = Pipe.iter session_feed
+     ~f:(Bot_runtime.feed_event bot)) *)
   let%bind () =
     match spec.is_marketdata_consumer with
     | false -> return ()

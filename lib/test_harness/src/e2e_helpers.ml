@@ -30,6 +30,10 @@ let connect_as ~port participant =
   in
   don't_wait_for
     (Pipe.iter_without_pushback session_feed ~f:(fun event ->
+       (* match event with | Fill fill -> let fill = Fill.to_participant_view
+          fill participant in (match fill with Some s -> print_endline s |
+          None -> ()) | _ -> let e = Event_protocol.format_event event in
+          print_endline [%string "[%{participant#Participant}] %{e}"])); *)
        let e = Event_protocol.format_event event in
        print_endline [%string "[for %{participant#Participant}] %{e}"]));
   return { conn }

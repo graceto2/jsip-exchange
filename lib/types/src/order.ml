@@ -49,6 +49,7 @@ module Request = struct
   type t =
     | Cancel of Cancel_request.t
     | Submit of Submit_request.t
+  [@@deriving sexp]
 end
 
 type t =

@@ -38,6 +38,7 @@ module Request : sig
   type t =
     | Cancel of Cancel_request.t
     | Submit of Submit_request.t
+  [@@deriving sexp]
 end
 
 (** A live order on the exchange, with an ID assigned by the matching engine

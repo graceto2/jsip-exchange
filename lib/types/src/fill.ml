@@ -64,12 +64,12 @@ let to_participant_view fill p =
       Some
         [%string
           "You bought size=%{size#Size} symbol=%{symbol#Symbol} at \
-           $price=%{price#Float}"]
+           price=$%{price#Float}"]
     | Sell ->
       Some
         [%string
           "You sold size=%{size#Size} symbol=%{symbol#Symbol} at \
-           $price=%{price#Float}"])
+           price=$%{price#Float}"])
   else if Participant.equal p resting
   then (
     match resting_side with
@@ -77,12 +77,12 @@ let to_participant_view fill p =
       Some
         [%string
           "You bought size=%{size#Size} symbol=%{symbol#Symbol} at \
-           $price=%{price#Float}"]
+           price=$%{price#Float}"]
     | Sell ->
       Some
         [%string
           "You sold size=%{size#Size} symbol=%{symbol#Symbol} at \
-           $price=%{price#Float}"])
+           price=$%{price#Float}"])
   else None
 ;;
 

@@ -13,8 +13,9 @@ module Config = struct
     ; half_spread_cents : int
     ; size_per_level : int
     ; num_levels : int
-    ; mutable inventory : int Symbol.Map.t
-    ; mutable currently_resting_orders : Client_order_id.Set.t
+    (* ; mutable inventory : int Symbol.Map.t
+
+       ; mutable currently_resting_orders : Size.t Client_order_id.Map.t *)
     }
   [@@deriving sexp_of]
 end
@@ -65,83 +66,37 @@ let seed_book (config : Config.t) conn =
       Deferred.unit)
 ;;
 
+(* let run (config : Config.t) conn = Deferred.unit *)
 (* let update_and_remove_if_consumed ~config ~side curr_pos *)
-let run (config : Config.t) conn =
-  let%bind feed =
-    Rpc.Pipe_rpc.dispatch Rpc_protocol.session_feed_rpc conn ()
-  in
-  let reader =
-    match feed with
-    | Ok (Ok (reader, _id)) -> reader
-    | _ -> failwith "subscribe failed"
-  in
-  don't_wait_for
-    (Pipe.iter_without_pushback reader ~f:(fun event ->
-       match event with
-       | Order_accept { request; order_id = _ } ->
-         let client_oid = request.client_order_id in
-         (* let symbol = request.symbol in let size = Size.to_int
-            request.size in let current_pos = match Map.find config.inventory
-            symbol with | None -> 0 | Some i -> i in *)
-         config.currently_resting_orders
-         <- Set.add config.currently_resting_orders client_oid
-       | Order_cancel
-           { client_order_id
-           ; participant = _
-           ; symbol = _
-           ; remaining_size = _
-           ; reason = _
-           ; order_id = _
-           } ->
-         config.currently_resting_orders
-         (* do i need to update inventory here? *)
-         <- Set.remove config.currently_resting_orders client_order_id
-       | Fill
-           { fill_id = _
-           ; symbol
-           ; price = _
-           ; size
-           ; aggressor_order_id = _
-           ; aggressor_participant
-           ; aggressor_side
-           ; aggressor_client_order_id
-           ; resting_order_id = _
-           ; resting_participant
-           ; resting_client_order_id
-           } ->
-         let resting_side = Side.flip aggressor_side in
-         let size = ref (Size.to_int size) in
-         (* let curr_pos = match Map.find config.inventory symbol with | None
-            -> 0 | Some int -> int in *)
-         if Participant.equal aggressor_participant config.participant
-         then (
-           match aggressor_side with Buy -> () | Sell -> size := !size * -1)
-         else if Participant.equal resting_participant config.participant
-         then (
-           match resting_side with Buy -> () | Sell -> size := !size * -1)
-         (* then ( (* net size = signed size (match on aggressor side) *)
-            match aggressor_side with | Buy -> config.inventory (* need to
-            refactor lots of repetitive code *) <- Map.update
-            config.inventory symbol ~f:(function | None -> size | Some curr
-            -> curr + size); if curr_pos + size = 0 then
-            config.currently_resting_orders <- Set.remove
-            config.currently_resting_orders aggressor_client_order_id | Sell
-            -> config.inventory <- Map.update config.inventory symbol
-            ~f:(function | None -> -1 * size | Some curr -> curr - size); if
-            curr_pos - size = 0 then config.currently_resting_orders <-
-            Set.remove config.currently_resting_orders
-            aggressor_client_order_id (* wrong place? *)) else if
-            Participant.equal resting_participant config.participant then (
-            match resting_side with | Buy -> config.inventory <- Map.update
-            config.inventory symbol ~f:(function | None -> size | Some curr
-            -> curr + size); if curr_pos + size = 0 then
-            config.currently_resting_orders <- Set.remove
-            config.currently_resting_orders resting_client_order_id | Sell ->
-            config.inventory <- Map.update config.inventory symbol
-            ~f:(function | None -> -1 * size | Some curr -> curr - size); if
-            curr_pos - size = 0 then config.currently_resting_orders <-
-            Set.remove config.currently_resting_orders
-            resting_client_order_id) *)
-       | _ -> ()));
-  return Deferred.never
-;;
+(* let run (config : Config.t) conn = let%bind session_feed, _metadata =
+   Rpc.Pipe_rpc.dispatch_exn Rpc_protocol.session_feed_rpc conn () in (*
+   raises exception if subscribe fails *) don't_wait_for
+   (Pipe.iter_without_pushback session_feed ~f:(fun event -> match event with
+   | Order_accept [{ request; order_id = _ }] -> let client_oid =
+   request.client_order_id in config.currently_resting_orders <- Map.add_exn
+   config.currently_resting_orders ~key:client_oid ~data:request.size |
+   Order_cancel
+   [{ client_order_id ; participant = _ ; symbol = _ ; remaining_size = _ ; reason = _ ; order_id = _ }]
+   -> config.currently_resting_orders <- Map.remove
+   config.currently_resting_orders client_order_id | Fill
+   [{ fill_id = _ ; symbol ; price = _ ; size ; aggressor_order_id = _ ; aggressor_participant ; aggressor_side ; aggressor_client_order_id ; resting_order_id = _ ; resting_participant ; resting_client_order_id }]
+   -> let resting_side = Side.flip aggressor_side in let size = ref
+   (Size.to_int size) in let client_oid = ref aggressor_client_order_id in (*
+   let curr_pos = match Map.find config.inventory symbol with | None -> 0 |
+   Some int -> int in *) if Participant.equal aggressor_participant
+   config.participant then ( match aggressor_side with Buy -> () | Sell ->
+   size := !size * -1) else if Participant.equal resting_participant
+   config.participant then ( match resting_side with | Buy -> () | Sell ->
+   size := !size * -1; client_oid := resting_client_order_id) else
+   [%log.error "market_maker: submit failed"]; (* made sign of size reflect
+   whether participant bought or sold *) config.inventory <- Map.update
+   config.inventory symbol ~f:(function | None -> !size | Some curr -> curr +
+   !size); config.currently_resting_orders <- Map.update
+   config.currently_resting_orders !client_oid ~f:(function | None ->
+   failwith "couldn't find resting order" | Some remaining_size ->
+   Size.of_int (Size.to_int remaining_size - !size)) (* match (Map.find
+   config.currently_resting_orders client_oid) with | None -> () | Some
+   remaining_size -> *) (* if curr_pos + !size = 0 then
+   config.currently_resting_orders <- Map.remove
+   config.currently_resting_orders !client_oid *) | _ -> ())); Deferred.unit
+   ;; *)
