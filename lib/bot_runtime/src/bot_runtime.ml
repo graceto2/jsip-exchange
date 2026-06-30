@@ -8,7 +8,7 @@ module Context = struct
     { participant : Participant.t
     ; oracle : Fundamental_oracle.t
     ; rng : Splittable_random.t
-    ; dispatch_submit : Order.Request.t -> unit Deferred.Or_error.t
+    ; dispatch_submit : Order.Submit_request.t -> unit Deferred.Or_error.t
     ; dispatch_cancel : Order_id.t -> unit Deferred.Or_error.t
     }
 

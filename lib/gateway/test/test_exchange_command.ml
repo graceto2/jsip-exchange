@@ -7,7 +7,7 @@ let print_parse line =
   match Exchange_command.parse line with
   | Error err -> print_endline [%string "%{Error.to_string_hum err}"]
   | Ok (Exchange_command.Submit req) ->
-    print_endline [%string "%{req#Order.Request}"]
+    print_endline [%string "%{req#Order.Submit_request}"]
   | Ok (Exchange_command.Book symb) | Ok (Exchange_command.Subscribe symb) ->
     print_endline [%string "%{symb#Symbol}"]
   | Ok (Exchange_command.Cancel cancel_req) ->

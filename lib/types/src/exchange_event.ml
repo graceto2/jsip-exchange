@@ -3,7 +3,7 @@ open! Core
 type t =
   | Order_accept of
       { order_id : Order_id.t
-      ; request : Order.Request.t
+      ; request : Order.Submit_request.t
       }
   | Fill of Fill.t
   | Order_cancel of
@@ -15,7 +15,7 @@ type t =
       ; client_order_id : Client_order_id.t
       }
   | Order_reject of
-      { request : Order.Request.t
+      { request : Order.Submit_request.t
       ; reason : string
       }
   | Cancel_reject of

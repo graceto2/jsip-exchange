@@ -177,7 +177,7 @@ with:
 
 Nothing in the project currently authenticates a connection or
 identifies the participant behind an order, so submitted requests
-carry their participant in `Order.Request.t.participant` and the
+carry their participant in `Order.Submit_request.t.participant` and the
 gateway trusts whatever value the client sent. You'll fix that
 along the way.
 
@@ -321,7 +321,7 @@ Add a block for `session_feed_rpc` to `lib/gateway/test/test_rpc_shapes.ml`.
 ### 1d: Client order ID in the request
 
 Add a new `Client_order_id` module and a `client_order_id : Client_order_id.t`
-field to `Order.Request.t`. This is the ID chosen by the client.
+field to `Order.Submit_request.t`. This is the ID chosen by the client.
 
 Make `Client_order_id` a thin `int` wrapper, in the same style as `Order_id` and `Size`:
 
@@ -431,7 +431,7 @@ Write tests for:
   name: the second one fails.
 
 **Keep the wire-shape tests current.** This exercise changes the protocol in
-several ways — a new `client_order_id` field on `Order.Request.t`, the new
+several ways — a new `client_order_id` field on `Order.Submit_request.t`, the new
 `login_rpc` / `session_feed_rpc` / `cancel_order_rpc` RPCs, and the new
 `Cancel_reject` event (which rides on the market-data, audit-log, and
 session-feed pipes) — so digests in `lib/gateway/test/test_rpc_shapes.ml` will
@@ -723,7 +723,7 @@ all client-facing identification now happens through
   `lib/bot_runtime/src/bot_runtime.{ml,mli}` to flow client order IDs
   end-to-end.** The runtime no longer needs to inject an order ID
   into the request — the bot picks one itself — so `Context.submit`
-  just takes an `Order.Request.t` (which now carries the
+  just takes an `Order.Submit_request.t` (which now carries the
   `client_order_id` field you added in Exercise 1d) and forwards it
   to `submit_order_rpc`. Change `Context.cancel` from
   `Order_id.t -> ...` to `Client_order_id.t -> ...`, and wire it to
@@ -786,7 +786,7 @@ all client-facing identification now happens through
 `Bot_runtime.For_testing.context_of` with mock `submit` / `cancel`
 closures (the existing `app/bots/test/test_bots.ml` already shows the
 recording-closure pattern). Verify that ticking the bot once produces
-the expected ladder of `Order.Request.t`s, and that injecting a `Fill`
+the expected ladder of `Order.Submit_request.t`s, and that injecting a `Fill`
 event causes the bot to cancel and re-quote with a skewed ladder.
 
 ---

@@ -11,11 +11,11 @@ open Jsip_gateway
 
    A bin-shape digest is a stable fingerprint of how a value is serialized.
    It changes whenever the serialized layout of a type changes: adding a
-   field to [Order.Request.t], adding a variant to [Exchange_event.t], or
-   pointing an RPC at a different type all move the digest. Two exchanges can
-   only talk to each other over an RPC if they agree on its name, version,
-   and these digests, so these tests are the precise statement of "what's on
-   the wire."
+   field to [Order.Submit_request.t], adding a variant to [Exchange_event.t],
+   or pointing an RPC at a different type all move the digest. Two exchanges
+   can only talk to each other over an RPC if they agree on its name,
+   version, and these digests, so these tests are the precise statement of
+   "what's on the wire."
 
    Keep them in sync as you build out the protocol: when you change or extend
    an RPC, update its test; when you add an RPC, add a test for it (copy one
@@ -40,7 +40,8 @@ let%expect_test "cancel-order RPC" =
     [%sexp
       (Rpc.Rpc.shapes Rpc_protocol.cancel_order_rpc
        : Async_rpc_kernel.Rpc_shapes.t)];
-  [%expect {|
+  [%expect
+    {|
     (Rpc (query 738560148b00517532a69284c2e68c61)
      (response 27f76252e5181aab209cd62aa6e42268))
     |}];
@@ -94,7 +95,8 @@ let%expect_test "login RPC" =
   print_s
     [%sexp
       (Rpc.Rpc.shapes Rpc_protocol.login_rpc : Async_rpc_kernel.Rpc_shapes.t)];
-  [%expect {|
+  [%expect
+    {|
     (Rpc (query d9a8da25d5656b016fb4dbdc2e4197fb)
      (response a77b3b6e3753246ce7ec1f3467c939eb))
     |}];
@@ -106,7 +108,8 @@ let%expect_test "session-feed RPC" =
     [%sexp
       (Rpc.Pipe_rpc.shapes Rpc_protocol.session_feed_rpc
        : Async_rpc_kernel.Rpc_shapes.t)];
-  [%expect {|
+  [%expect
+    {|
     (Streaming_rpc (query 86ba5df747eec837f0b391dd49f33f9e)
      (initial_response 86ba5df747eec837f0b391dd49f33f9e)
      (update_response ff5dd26ff7c861cb2120faf0c3a4d46f)

@@ -21,7 +21,7 @@ let make_order
      ; time_in_force = Day
      ; client_order_id
      }
-     : Order.Request.t)
+     : Order.Submit_request.t)
     ~order_id:(Order_id.For_testing.of_int order_id)
 ;;
 

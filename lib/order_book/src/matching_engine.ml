@@ -76,7 +76,7 @@ let rec match_loop t ~book ~order ~fill_id =
       fill_event :: trade_event :: remaining_events, next_fill_id)
 ;;
 
-let submit t (request : Order.Request.t) =
+let submit t (request : Order.Submit_request.t) =
   match Map.find t.books request.symbol with
   | None ->
     [ Exchange_event.Order_reject { request; reason = "unknown symbol" } ]

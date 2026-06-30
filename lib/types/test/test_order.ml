@@ -11,7 +11,7 @@ let make_request
   ?(time_in_force = Time_in_force.Day)
   ?(client_order_id = 1)
   ()
-  : Order.Request.t
+  : Order.Submit_request.t
   =
   { symbol = Symbol.of_string symbol
   ; participant = Participant.of_string participant

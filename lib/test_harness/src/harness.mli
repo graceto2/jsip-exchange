@@ -45,7 +45,7 @@ val engine : t -> Matching_engine.t
 
 (** {2 Order request builders}
 
-    These build [Order.Request.t] values with sensible defaults:
+    These build [Order.Submit_request.t] values with sensible defaults:
     - symbol: AAPL
     - participant: Alice
     - size: 100
@@ -59,7 +59,7 @@ val buy
   -> ?time_in_force:Time_in_force.t
   -> ?client_order_id:Client_order_id.t
   -> unit
-  -> Order.Request.t
+  -> Order.Submit_request.t
 
 val sell
   :  price_cents:int
@@ -69,7 +69,7 @@ val sell
   -> ?time_in_force:Time_in_force.t
   -> ?client_order_id:Client_order_id.t
   -> unit
-  -> Order.Request.t
+  -> Order.Submit_request.t
 
 (** {2 Actions}
 
@@ -78,10 +78,10 @@ val sell
 
 (** Submit an order request through the matching engine and print all
     resulting events. Returns the event list for further inspection. *)
-val submit : t -> Order.Request.t -> Exchange_event.t list
+val submit : t -> Order.Submit_request.t -> Exchange_event.t list
 
 (** Submit and print, discarding the return value. *)
-val submit_ : t -> Order.Request.t -> unit
+val submit_ : t -> Order.Submit_request.t -> unit
 
 (** {2 Sample events}
 
@@ -96,10 +96,10 @@ val submit_ : t -> Order.Request.t -> unit
 val sample_events : Exchange_event.t list
 
 (** As [submit], but events are not printed. *)
-val submit_quiet : t -> Order.Request.t -> Exchange_event.t list
+val submit_quiet : t -> Order.Submit_request.t -> Exchange_event.t list
 
 (** As [submit_quiet], but event are not printed. *)
-val submit_quiet_ : t -> Order.Request.t -> unit
+val submit_quiet_ : t -> Order.Submit_request.t -> unit
 
 (** {2 Formatting}
 

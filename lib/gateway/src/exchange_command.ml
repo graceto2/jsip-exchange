@@ -12,7 +12,7 @@ module Verb = struct
 end
 
 type t =
-  | Submit of Order.Request.t
+  | Submit of Order.Submit_request.t
   | Cancel of Order.Cancel_request.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
@@ -73,7 +73,7 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
           ; time_in_force
           ; client_order_id = Int.of_string client_order_id
           }
-          : Order.Request.t))
+          : Order.Submit_request.t))
   | _ ->
     Error "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]"
 ;;

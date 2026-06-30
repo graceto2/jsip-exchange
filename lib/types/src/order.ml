@@ -14,7 +14,7 @@ module Cancel_request = struct
   ;;
 end
 
-module Request = struct
+module Submit_request = struct
   type t =
     { symbol : Symbol.t
     ; participant : Participant.t
@@ -45,10 +45,10 @@ module Request = struct
   ;;
 end
 
-module Submit = struct
+module Request = struct
   type t =
     | Cancel of Cancel_request.t
-    | Request of Request.t
+    | Submit of Submit_request.t
 end
 
 type t =
@@ -82,7 +82,7 @@ let to_string
      %{participant#Participant})"]
 ;;
 
-let create (req : Request.t) ~order_id =
+let create (req : Submit_request.t) ~order_id =
   if Size.( <= ) req.size Size.zero
   then
     raise_s

@@ -57,7 +57,7 @@ let make_recording_bot
   bot, submitted, cancelled
 ;;
 
-let print_submitted (submitted : Order.Request.t list ref) =
+let print_submitted (submitted : Order.Submit_request.t list ref) =
   let recent = List.rev !submitted in
   List.iter recent ~f:(fun req ->
     printf

@@ -19,7 +19,7 @@ module Cancel_request : sig
   val to_string : t -> string
 end
 
-module Request : sig
+module Submit_request : sig
   type t =
     { symbol : Symbol.t
     ; participant : Participant.t
@@ -34,10 +34,10 @@ module Request : sig
   val to_string : t -> string
 end
 
-module Submit : sig
+module Request : sig
   type t =
     | Cancel of Cancel_request.t
-    | Request of Request.t
+    | Submit of Submit_request.t
 end
 
 (** A live order on the exchange, with an ID assigned by the matching engine
@@ -51,7 +51,7 @@ val to_string : t -> string
 (** Create a live order from a request and an assigned order ID. The
     [remaining_size] starts equal to the request's [size]. Raises if the
     request's [size] is non-positive. *)
-val create : Request.t -> order_id:Order_id.t -> t
+val create : Submit_request.t -> order_id:Order_id.t -> t
 
 (** {2 Accessors} *)
 

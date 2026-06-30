@@ -28,19 +28,19 @@ open! Core
 open! Jsip_types
 
 type t =
-  | Submit of Order.Request.t
+  | Submit of Order.Submit_request.t
   | Cancel of Order.Cancel_request.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
 (** Parse a text command into an order request. Returns [Error] with a
     human-readable message if the input is malformed. *)
-(* val parse_command : string -> (Order.Request.t, string) Result.t *)
+(* val parse_command : string -> (Order.Submit_request.t, string) Result.t *)
 
 (** If no participant is provided in the input, and if none is specified in
     the command text, uses [default] as the participant. Useful for clients
     that already know their identity. *)
 (* val parse_command_with_default_participant : string ->
-   default:Participant.t -> (Order.Request.t, string) Result.t *)
+   default:Participant.t -> (Order.Submit_request.t, string) Result.t *)
 
 val parse : ?default_participant:Participant.t -> string -> t Or_error.t

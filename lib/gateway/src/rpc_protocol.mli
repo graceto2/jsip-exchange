@@ -25,7 +25,7 @@ open Jsip_types
     The error case covers connection-level failures only — connection closed,
     server shutting down, etc. — not domain errors like unknown symbols
     (those arrive as [Order_reject] events on the session feed). *)
-val submit_order_rpc : (Order.Request.t, unit Or_error.t) Rpc.Rpc.t
+val submit_order_rpc : (Order.Submit_request.t, unit Or_error.t) Rpc.Rpc.t
 
 val cancel_order_rpc : (Order.Cancel_request.t, unit Or_error.t) Rpc.Rpc.t
 

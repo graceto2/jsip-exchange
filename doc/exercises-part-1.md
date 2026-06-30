@@ -298,7 +298,7 @@ data that its command needs:
 
 ```ocaml
 type t =
-  | Submit of Order.Request.t
+  | Submit of Order.Submit_request.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 ```

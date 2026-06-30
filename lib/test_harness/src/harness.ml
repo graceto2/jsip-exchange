@@ -35,7 +35,7 @@ let make_request
   ?(time_in_force = Time_in_force.Day)
   ?(client_order_id = !next_fill_id)
   ()
-  : Order.Request.t
+  : Order.Submit_request.t
   =
   next_fill_id := !next_fill_id + 1;
   { symbol
@@ -115,7 +115,7 @@ let submit_ t request = ignore (submit t request : Exchange_event.t list)
 let submit_quiet t request = Matching_engine.submit (engine t) request
 
 let sample_events : Exchange_event.t list =
-  let order_request : Order.Request.t =
+  let order_request : Order.Submit_request.t =
     { symbol = aapl
     ; participant = alice
     ; side = Buy

@@ -6,7 +6,7 @@ open Jsip_order_book
 type t =
   { engine : Matching_engine.t
   ; dispatcher : Dispatcher.t
-  ; request_writer : Order.Submit.t Pipe.Writer.t
+  ; request_writer : Order.Request.t Pipe.Writer.t
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
   }
@@ -24,16 +24,16 @@ end
    without the server's memory growing unboundedly. *)
 let request_queue_size_budget = 1024
 
-let handle_submit ~request_writer (request : Order.Request.t) =
+let handle_submit ~request_writer (request : Order.Submit_request.t) =
   let%map () =
-    Pipe.write_if_open request_writer (Order.Submit.Request request)
+    Pipe.write_if_open request_writer (Order.Request.Submit request)
   in
   Ok ()
 ;;
 
 let handle_cancel ~request_writer (cancel_request : Order.Cancel_request.t) =
   let%map () =
-    Pipe.write_if_open request_writer (Order.Submit.Cancel cancel_request)
+    Pipe.write_if_open request_writer (Order.Request.Cancel cancel_request)
   in
   Ok ()
 ;;
@@ -42,10 +42,10 @@ let start_matching_loop ~engine ~dispatcher request_reader =
   don't_wait_for
     (Pipe.iter_without_pushback request_reader ~f:(fun request ->
        match request with
-       | Order.Submit.Request request ->
+       | Order.Request.Submit request ->
          let events = Matching_engine.submit engine request in
          Dispatcher.dispatch dispatcher events
-       | Order.Submit.Cancel cancel_request ->
+       | Order.Request.Cancel cancel_request ->
          let events = Matching_engine.cancel engine cancel_request in
          Dispatcher.dispatch dispatcher events))
 ;;
