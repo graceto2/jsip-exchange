@@ -67,7 +67,10 @@ let push_to_session t participant event =
   let session = Hashtbl.find t.participant_sessions participant in
   match session with
   | Some session -> Session.push session event
-  | None -> print_endline "no session"
+  | None ->
+    [%log.error
+      [%string
+        "Couldn't find session with participant %{participant#Participant}."]]
 ;;
 
 let clean_up_session t session =

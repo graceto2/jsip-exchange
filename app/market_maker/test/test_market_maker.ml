@@ -14,6 +14,7 @@ let default_config : Market_maker.Config.t =
   ; half_spread_cents = 10
   ; size_per_level = 100
   ; num_levels = 3
+  ; fill_client_oid = ref 0
   ; inventory = Map.empty (module Symbol)
   ; currently_resting_orders = Map.empty (module Client_order_id)
   }
@@ -33,29 +34,84 @@ let%expect_test "seed_book: places symmetric bids and asks around fair value"
       [for MarketMaker] ACCEPTED id=5 AAPL BUY 100@$149.88 DAY
       [for MarketMaker] ACCEPTED id=6 AAPL SELL 100@$150.12 DAY
       |}];
+    Market_maker.reset_fill_client_oids default_config;
+    (* how come the inventory and resting orders seem to reset, but not the
+       fill order ids ? *)
     return ())
 ;;
 
-(* let%expect_test "run: resulting inventory and outstanding orders state \
-   match what was expected" = with_server ~symbols:[ Harness.aapl ] (fun
-   ~server:_ ~port -> let%bind mm = connect_as ~port Harness.market_maker in
-   let%bind alice = connect_as ~port Harness.alice in let%bind () =
-   Market_maker.run default_config (connection mm) in let%bind () =
-   Market_maker.seed_book default_config (connection mm) in (* check that
-   resting orders were all added to set of client OIDs *) (* Set.iter
-   default_config.currently_resting_orders ~f:(fun oid -> print_string
-   [%string "%{oid#Client_order_id}, "]);
-   [%expect {|"print client oids"|}]; *) let%bind () = rpc_submit alice
-   (Harness.sell ~price_cents:14990 ~participant:Harness.alice ~size:50
-   ~symbol:Harness.aapl ()) in Map.iteri default_config.inventory ~f:(fun
-   ~key ~data -> print_endline [%string "%{key#Symbol}: %{data#Int}"]);
-   let%bind () = rpc_submit alice (Harness.sell ~price_cents:14990
-   ~participant:Harness.alice ~size:50 ~symbol:Harness.aapl ()) in (* fill
-   consumed the remaining size of order, client OID should have been
-   removed *) Map.iteri default_config.inventory ~f:(fun ~key ~data ->
-   print_endline [%string "%{key#Symbol}: %{data#Int}"]); Map.iteri
-   default_config.currently_resting_orders ~f:(fun ~key:oid ~data ->
-   print_string [%string "%{oid#Client_order_id}: %{data#Size}; "]);
-   [%expect {|"some client oid was removed|}]; return ()) ;; *)
-
-(* add a test where some fill not including market maker happens *)
+(* [CR] claude for Grace: Two issues with this test.
+   (1) The expected client-order-ids (7..12) only hold because the
+       [seed_book] test above ran first and left the module-global
+       [fill_client_oid] at 6. Run this test alone and it breaks — kill the
+       coupling by fixing the global-counter smell (see the CR in
+       market_maker.ml).
+   (2) It only ever has Alice *sell* into the MM's bids, so the ask-side
+       remaining-size bug (also CR'd in market_maker.ml) is never exercised.
+       Add a case where a counterparty *buys* into the MM's asks. Also prefer
+       asserting on the [inventory]/[currently_resting_orders] maps via
+       [sexp_of] over hand-rolled [print_string] scaffolding — it shows
+       structure and survives reordering. *)
+let%expect_test "run: resulting inventory and outstanding orders state \
+                 match what was expected"
+  =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind mm = connect_as ~port Harness.market_maker in
+    let%bind alice = connect_as ~port Harness.alice in
+    let%bind () = Market_maker.run default_config (connection mm) in
+    let%bind () = Market_maker.seed_book default_config (connection mm) in
+    print_string "Currently resting orders: ";
+    Map.iteri
+      default_config.currently_resting_orders
+      ~f:(fun ~key:oid ~data ->
+        ignore data;
+        print_string [%string "%{oid#Client_order_id}, "]);
+    print_string "\n";
+    let%bind () =
+      rpc_submit
+        alice
+        (Harness.sell
+           ~price_cents:14990
+           ~participant:Harness.alice
+           ~size:50
+           ~symbol:Harness.aapl
+           ())
+    in
+    print_string "Current inventory: ";
+    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
+      print_string [%string "%{key#Symbol} (size = %{data#Int}), "]);
+    print_string "\n";
+    let%bind () =
+      rpc_submit
+        alice
+        (Harness.sell
+           ~price_cents:14990
+           ~participant:Harness.alice
+           ~size:50
+           ~symbol:Harness.aapl
+           ())
+    in
+    (* Fill consumed the remaining size of order, the first order (of client
+       OID = 7) should have been removed. *)
+    print_string "Current inventory: ";
+    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
+      print_string [%string "%{key#Symbol} (size = %{data#Int}), "]);
+    print_string "\n";
+    print_string "Currently resting orders: ";
+    Map.iteri
+      default_config.currently_resting_orders
+      ~f:(fun ~key:oid ~data ->
+        ignore data;
+        print_string [%string "%{oid#Client_order_id}, "]);
+    [%expect
+      {|
+      Currently resting orders: 1, 2, 3, 4, 5, 6,
+      [for Alice] ACCEPTED id=7 AAPL SELL 50@$149.90 DAY
+      [for Alice] FILL fill_id=1 aggressor_client_oid=0 resting_client_oid=1 AAPL $149.90 x50 aggressor=7(Alice) SELL resting=1(MarketMaker)
+      Current inventory: AAPL (size = 50),
+      [for Alice] REJECTED AAPL SELL 50@$149.90 reason=Client order ID already in use
+      Current inventory: AAPL (size = 50),
+      Currently resting orders: 1, 2, 3, 4, 5, 6,
+      |}];
+    return ())
+;;

@@ -46,44 +46,31 @@ let to_string
     (Participant.to_string resting_participant)
 ;;
 
-(* let x : Int.t = 5 let y : String.t = "6" let output_string : string =
-   [%string "I can write anything in here. x=%{x#Int}, y=%{y}"] *)
-
 let to_participant_view fill p =
   let aggressor = fill.aggressor_participant in
   let resting = fill.resting_participant in
   let size = fill.size in
   let symbol = fill.symbol in
-  let price = Price.to_float fill.price in
+  let price = Price.to_string_dollar fill.price in
   let aggressor_side = fill.aggressor_side in
   let resting_side = Side.flip aggressor_side in
-  if Participant.equal p aggressor
-  then (
-    match aggressor_side with
-    | Side.Buy ->
-      Some
-        [%string
-          "You bought size=%{size#Size} symbol=%{symbol#Symbol} at \
-           price=$%{price#Float}"]
-    | Sell ->
-      Some
-        [%string
-          "You sold size=%{size#Size} symbol=%{symbol#Symbol} at \
-           price=$%{price#Float}"])
-  else if Participant.equal p resting
-  then (
-    match resting_side with
-    | Side.Buy ->
-      Some
-        [%string
-          "You bought size=%{size#Size} symbol=%{symbol#Symbol} at \
-           price=$%{price#Float}"]
-    | Sell ->
-      Some
-        [%string
-          "You sold size=%{size#Size} symbol=%{symbol#Symbol} at \
-           price=$%{price#Float}"])
-  else None
+  let my_side =
+    if Participant.equal p aggressor
+    then Some aggressor_side
+    else if Participant.equal p resting
+    then Some resting_side
+    else None
+  in
+  match my_side with
+  | Some Side.Buy ->
+    Some
+      [%string
+        "You bought size=%{size#Size} symbol=%{symbol#Symbol} at $%{price}"]
+  | Some Sell ->
+    Some
+      [%string
+        "You sold size=%{size#Size} symbol=%{symbol#Symbol} at $%{price}"]
+  | None -> None
 ;;
 
 let notional_cents t = Price.to_int_cents t.price * Size.to_int t.size

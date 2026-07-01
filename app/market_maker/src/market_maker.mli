@@ -24,6 +24,7 @@ module Config : sig
         and offer at [fair_value + half_spread]. *)
     ; size_per_level : int (** Number of shares at each price level. *)
     ; num_levels : int
+    ; fill_client_oid : int ref
         (* ; mutable inventory : int Symbol.Map.t (** An inventory counter
            per symbol. Updated upon Fill events involving this market
            maker. *) ; mutable currently_resting_orders :
@@ -35,6 +36,8 @@ module Config : sig
     }
   [@@deriving sexp_of]
 end
+
+val reset_fill_client_oids : Config.t -> unit
 
 (** Submit the market maker's initial set of resting orders over the given
     open [Rpc.Connection.t]. The connection must already be logged in as

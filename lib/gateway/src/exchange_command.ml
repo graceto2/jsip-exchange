@@ -20,7 +20,12 @@ type t =
 (* Default participant when no "as <name>" is specified in the command.
    [parse_command_with_default_participant] overrides this with the
    caller-supplied default. *)
-let default_p = Participant.of_string "anonymous"
+(* [CR] claude for Grace: Naming — [default_p] is an unclear abbreviation;
+   spell it [default_participant] (or inline it). Bigger question: now that
+   the participant comes from login server-side, is the "anonymous" default
+   (and the whole "as <name>" grammar) still reachable? If not, delete it
+   rather than keep dead-but-documented behavior — see the CR on the "AS"
+   branch below. *)
 
 let parse_buy_or_sell ?default_participant input_tokens ~side =
   let open Result.Let_syntax in
@@ -49,7 +54,6 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
       match rest with
       | tif_str :: rest' ->
         (match String.uppercase tif_str with
-         | "AS" -> Ok (Time_in_force.Day, rest)
          | _ -> Ok (Time_in_force.of_string tif_str, rest'))
       | [] -> Ok (Day, [])
     in
@@ -58,7 +62,10 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
       | [] ->
         (match default_participant with
          | Some p -> Ok p
-         | None -> Ok default_p)
+         | None -> Ok (Participant.of_string "anonymous"))
+        (* Should never reach this state, because we require the participant
+           to log in. Kept it here because there are many parsing test cases
+           without a participant. *)
       | _ ->
         let trailing = String.concat ~sep:" " rest in
         Error [%string "unexpected trailing arguments: %{trailing}"]

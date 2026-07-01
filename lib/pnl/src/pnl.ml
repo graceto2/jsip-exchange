@@ -35,19 +35,13 @@ module Position = struct
       ; cost_basis = t.cost_basis + (qty * price_cents)
       }
     else (
-      (* Opposite direction: we close up to [closing] shares of the existing
-         position against its average entry price, then — if [qty] is larger
-         than the position — open a fresh position with whatever is left. *)
+      (* We close up to [closing] shares of the existing position against its
+         average entry price, then — if [qty] is larger than the position —
+         open a fresh position with whatever is left. Direction is 1 if long,
+         -1 if short. *)
       let direction = if t.inventory > 0 then 1 else -1 in
       let closing = Int.min (Int.abs t.inventory) (Int.abs qty) in
       let average_entry = t.cost_basis / t.inventory in
-      (* TODO(human): compute [realized_delta] — the cash P&L locked in by
-         closing [closing] shares of the existing position at [price_cents],
-         measured against [average_entry].
-
-         Closing a long books a profit when [price_cents > average_entry];
-         closing a short is the reverse. [direction] (+1 long, -1 short) lets
-         you write this as one sign-aware expression rather than an [if]. *)
       let realized_delta =
         direction * closing * (price_cents - average_entry)
       in

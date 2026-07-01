@@ -39,6 +39,7 @@ let seed_market_maker ~where_to_connect =
     ; half_spread_cents = 10
     ; size_per_level = 100
     ; num_levels = 5
+    ; fill_client_oid = ref 0
     ; inventory = Map.empty (module Symbol)
     ; currently_resting_orders = Map.empty (module Client_order_id)
     }
@@ -77,6 +78,7 @@ let trade_back_and_forth ~where_to_connect =
     ; half_spread_cents = 5
     ; size_per_level = 25
     ; num_levels = 3
+    ; fill_client_oid = ref 0
     ; inventory = Map.empty (module Symbol)
     ; currently_resting_orders = Map.empty (module Client_order_id)
     }

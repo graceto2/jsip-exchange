@@ -3,8 +3,6 @@ open! Async
 open Jsip_types
 open Jsip_gateway
 
-let fill_client_oid = ref 0
-
 module Config = struct
   type t =
     { participant : Participant.t
@@ -13,14 +11,23 @@ module Config = struct
     ; half_spread_cents : int
     ; size_per_level : int
     ; num_levels : int
+    ; fill_client_oid : int ref
+        (* [CR-soon] claude for Grace: [Config.t] reads as static setup (it's
+           [sexp_of]'d and passed to [seed_book]), but these two [mutable]
+           fields are live per-run state. Consider splitting them into a
+           separate [State.t] so the config stays immutable and the running
+           state is clearly distinguished. *)
     ; mutable inventory : int Symbol.Map.t
-        (* how much of each symbol we have successfully bought/sold *)
+        (* How much of each symbol we have successfully bought/sold. Should
+           this be of Size.t? *)
     ; mutable currently_resting_orders : Size.t Client_order_id.Map.t
-    (* maps client_order_ids (corresponding to currently resting orders) ->
-       remaining size in the order book *)
+    (* Maps client_order_ids (corresponding to currently resting orders) ->
+       remaining size in the order book. *)
     }
   [@@deriving sexp_of]
 end
+
+let reset_fill_client_oids (config : Config.t) = config.fill_client_oid := 0
 
 let seed_book (config : Config.t) conn =
   let submit request =
@@ -41,7 +48,7 @@ let seed_book (config : Config.t) conn =
     ~f:(fun level ->
       let offset = config.half_spread_cents + level in
       let%bind () =
-        fill_client_oid := !fill_client_oid + 1;
+        config.fill_client_oid := !(config.fill_client_oid) + 1;
         submit
           ({ symbol = config.symbol
            ; participant = config.participant
@@ -49,11 +56,11 @@ let seed_book (config : Config.t) conn =
            ; price = Price.of_int_cents (config.fair_value_cents - offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = !fill_client_oid
+           ; client_order_id = !(config.fill_client_oid)
            }
            : Order.Submit_request.t)
       and () =
-        fill_client_oid := !fill_client_oid + 1;
+        config.fill_client_oid := !(config.fill_client_oid) + 1;
         submit
           ({ symbol = config.symbol
            ; participant = config.participant
@@ -61,7 +68,7 @@ let seed_book (config : Config.t) conn =
            ; price = Price.of_int_cents (config.fair_value_cents + offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = !fill_client_oid
+           ; client_order_id = !(config.fill_client_oid)
            }
            : Order.Submit_request.t)
       in
@@ -69,7 +76,6 @@ let seed_book (config : Config.t) conn =
 ;;
 
 let remove_resting_order (config : Config.t) client_oid =
-  print_endline "entered remove resting order";
   config.currently_resting_orders
   <- Map.remove config.currently_resting_orders client_oid
 ;;
@@ -79,7 +85,30 @@ let add_resting_order (config : Config.t) client_oid size =
   <- Map.add_exn config.currently_resting_orders ~key:client_oid ~data:size
 ;;
 
-(* let update_and_remove_if_consumed ~config ~side curr_pos *)
+let add_size_to_symbol (config : Config.t) symbol (signed_size : int) =
+  config.inventory
+  <- Map.update config.inventory symbol ~f:(function
+       | None -> signed_size
+       | Some curr -> curr + signed_size)
+;;
+
+let update_resting_order_size (config : Config.t) client_oid (size : Size.t) =
+  let size = Size.to_int size in
+  config.currently_resting_orders
+  <- (match Map.find config.currently_resting_orders client_oid with
+      | Some remaining_size ->
+        let remaining_size = Size.to_int remaining_size in
+        let updated_size = Size.of_int (remaining_size - size) in
+        Map.change config.currently_resting_orders client_oid ~f:(function
+          | Some _ -> Some updated_size
+          | None -> None)
+      | None ->
+        [%log.error
+          "Couldn't find that order in config.currently_resting_orders"];
+        config.currently_resting_orders)
+;;
+
+(* let add_size_to_inventory (config:Config.t) ~symbol (signed_size:int) = *)
 (* the inventory is only updated when a fill goes through, resting orders
    only updated on order accept, order cancel, fill *)
 (* need to fix bug where when a fill completes the order, does not get
@@ -116,43 +145,36 @@ let run (config : Config.t) conn =
            ; resting_participant
            ; resting_client_order_id
            } ->
+         (* -----assume we are on some side of the fill; is this correc? *)
          let side = ref aggressor_side in
-         let size = ref (Size.to_int size) in
+         let signed_size = ref (Size.to_int size) in
          let client_oid = ref aggressor_client_order_id in
          if Participant.equal resting_participant config.participant
          then (
            side := Side.flip aggressor_side;
            client_oid := resting_client_order_id);
-         (* do we need to check whether we are on some side? or do we assume
-            we will be on at least one side of the fill *)
-         (match !side with Sell -> size := !size * -1 | Buy -> ());
-         config.inventory
-         (* update inventory with added size for symbol *)
-         <- Map.update config.inventory symbol ~f:(function
-              | None -> !size
-              | Some curr -> curr + !size);
-         config.currently_resting_orders
-         (* update remaining size in currently resting orders, and remove if
-            completely filled *)
-         <- Map.update
+         (* Assume that market maker is on one side of the fill. We don't
+            check that it is on the other side if it is not on the resting
+            side. *)
+         (match !side with
+          | Sell -> signed_size := !signed_size * -1
+          | Buy -> ());
+         (* Update inventory with added size for symbol. *)
+         add_size_to_symbol config symbol !signed_size;
+         (* Update the size of currently resting orders - removes however
+            much the fill sold/bought against us. *)
+         update_resting_order_size config !client_oid size;
+         (* Remove the corresponding resting order if the fill consumed the
+            full remaining size of the order *)
+         (match Map.find config.currently_resting_orders !client_oid with
+          | None -> ()
+          | Some size ->
+            if Size.to_int size = 0
+            then
               config.currently_resting_orders
-              !client_oid
-              ~f:(function
-              | None ->
-                failwith "couldn't find resting order"
-                (* is this the correct way to error handle? *)
-              | Some remaining_size ->
-                print_endline "was here ";
-                let remaining_size = Size.to_int remaining_size in
-                print_endline
-                  [%string
-                    "remaining size: %{remaining_size#Int}, size removed: \
-                     %{!size#Int}"];
-                if remaining_size = !size
-                then
-                  config.currently_resting_orders
-                  <- Map.remove config.currently_resting_orders !client_oid;
-                Size.of_int (remaining_size - !size))
-       | _ -> ()));
+              <- Map.remove config.currently_resting_orders !client_oid)
+       | Order_reject _ | Cancel_reject _ | Best_bid_offer_update _
+       | Trade_report _ ->
+         ()));
   return ()
 ;;

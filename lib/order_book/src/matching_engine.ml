@@ -89,7 +89,11 @@ let submit t (request : Order.Submit_request.t) =
       Exchange_event.Order_reject
         { request; reason = "Client order ID already in use" }
     in
-    (* check if valid client_order_id *)
+    (* [client_order_ids] and [server_id_to_client_id] are never pruned —
+       they retain every order ever submitted, so they grow without bound.
+       Because of that, a [client_order_id] is rejected forever, even after
+       its order fully filled or was cancelled, so a client can never reuse
+       an id. *)
     let prev_order = Hashtbl.find t.client_order_ids client_order_id in
     (match prev_order with
      | Some _ -> [ rejected ]
@@ -196,6 +200,11 @@ let cancel t (cancel_request : Order.Cancel_request.t) =
           List.concat [ [ cancelled ]; bbo_events ]))
 ;;
 
+(* [CR] claude for Grace: Delete these commented-out drafts before CR (git
+   remembers them). If the end-of-day cancellation is still owed, track it as
+   a [CR-someday] or an issue rather than leaving three abandoned attempts in
+   the source. Same for the commented [open Async_log_kernel] in
+   order_book.ml and the [val end_of_day] line in matching_engine.mli. *)
 (* pt 1 ex 5: did not finish *)
 (* let remove_day_orders_on_side order_book ~side = let day_orders =
    List.filter (Order_book.orders_on_side order_book side) ~f:(fun order ->

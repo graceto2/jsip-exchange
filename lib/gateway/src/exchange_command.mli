@@ -10,15 +10,15 @@
 
     Each command is a single line of text:
     {v
-    BUY  <symbol> <size> <price> [<time_in_force>] [as <participant>]
-    SELL <symbol> <size> <price> [<time_in_force>] [as <participant>]
+    BUY  <client_id> <symbol> <size> <price> [<time_in_force>]
+    SELL <client_id> <symbol> <size> <price> [<time_in_force>]
     v}
 
     Examples:
     {v
-    BUY AAPL 100 150.25
-    SELL TSLA 50 200.00 IOC
-    BUY AAPL 100 150.00 DAY as Alice
+    BUY 0 AAPL 100 150.25
+    SELL 1 TSLA 50 200.00 IOC
+    BUY 2 AAPL 100 150.00 DAY
     v}
 
     Time-in-force defaults to DAY if omitted. Participant defaults to
