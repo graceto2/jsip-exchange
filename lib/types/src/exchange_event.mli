@@ -36,13 +36,10 @@ type t =
       { symbol : Symbol.t
       ; bbo : Bbo.t
       }
-  | Trade_report of
-      { symbol : Symbol.t
-      ; price : Price.t
-      ; size : Size.t
-      }
+  | Trade_report of Trade_report.t
   (** A public trade print. Unlike [Fill], this contains no information about
-      the participants — it is what the broader market sees. *)
+      the participants — it is what the broader market sees. See
+      {!Trade_report.t}. *)
 [@@deriving sexp, bin_io]
 
 (** Is this a market data event (BBO update or trade report)? *)

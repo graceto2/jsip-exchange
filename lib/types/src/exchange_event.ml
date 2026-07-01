@@ -27,11 +27,7 @@ type t =
       { symbol : Symbol.t
       ; bbo : Bbo.t
       }
-  | Trade_report of
-      { symbol : Symbol.t
-      ; price : Price.t
-      ; size : Size.t
-      }
+  | Trade_report of Trade_report.t
 [@@deriving sexp, bin_io]
 
 let is_market_data = function
@@ -42,9 +38,8 @@ let is_market_data = function
 ;;
 
 let symbol_of_market_data = function
-  | Best_bid_offer_update { symbol; bbo = _ }
-  | Trade_report { symbol; price = _; size = _ } ->
-    Some symbol
+  | Best_bid_offer_update { symbol; bbo = _ } -> Some symbol
+  | Trade_report { Trade_report.symbol; _ } -> Some symbol
   | Order_accept _ | Fill _ | Order_cancel _ | Order_reject _
   | Cancel_reject _ ->
     None

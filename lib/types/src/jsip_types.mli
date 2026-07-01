@@ -19,3 +19,4 @@ module Size = Size
 module Symbol = Symbol
 module Time_in_force = Time_in_force
 module Client_order_id = Client_order_id
+module Trade_report = Trade_report
