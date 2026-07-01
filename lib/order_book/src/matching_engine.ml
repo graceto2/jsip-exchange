@@ -199,26 +199,3 @@ let cancel t (cancel_request : Order.Cancel_request.t) =
           in
           List.concat [ [ cancelled ]; bbo_events ]))
 ;;
-
-(* [CR] claude for Grace: Delete these commented-out drafts before CR (git
-   remembers them). If the end-of-day cancellation is still owed, track it as
-   a [CR-someday] or an issue rather than leaving three abandoned attempts in
-   the source. Same for the commented [open Async_log_kernel] in
-   order_book.ml and the [val end_of_day] line in matching_engine.mli. *)
-(* pt 1 ex 5: did not finish *)
-(* let remove_day_orders_on_side order_book ~side = let day_orders =
-   List.filter (Order_book.orders_on_side order_book side) ~f:(fun order ->
-   Time_in_force.equal (Order.time_in_force order) Time_in_force.Day) in
-   List.map day_orders ~f:(fun order -> Exchange_event.Order_cancel
-   [{ order_id = Order.order_id order ; participant = Order.participant order ; symbol = Order.symbol order ; remaining_size = Order.size order ; reason = Cancel_reason.End_of_day }])
-   ;; *)
-
-(* do separately using built in functions or do at once using recursion? *)
-(* let remove_day_orders_on_side order_book ~side = let oid = Order.order_id
-   order in match Order_book.orders_on_side order_book side with | order ::
-   rest -> if order.time_in_force = Time_in_force.Day then Order_book.remove
-   order_book (Order.order_id order) else () ;; *)
-
-(* turn into pipe, use recursive approach *)
-(* let end_of_day t event_list = List.iter t.books ~f:(fun book -> List.iter
-   (Order_book.orders_on_side book Side.Buy) ~f:()) *)

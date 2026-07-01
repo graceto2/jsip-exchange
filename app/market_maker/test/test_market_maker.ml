@@ -41,17 +41,13 @@ let%expect_test "seed_book: places symmetric bids and asks around fair value"
 ;;
 
 (* [CR] claude for Grace: Two issues with this test.
-   (1) The expected client-order-ids (7..12) only hold because the
-       [seed_book] test above ran first and left the module-global
-       [fill_client_oid] at 6. Run this test alone and it breaks — kill the
-       coupling by fixing the global-counter smell (see the CR in
-       market_maker.ml).
+
    (2) It only ever has Alice *sell* into the MM's bids, so the ask-side
-       remaining-size bug (also CR'd in market_maker.ml) is never exercised.
-       Add a case where a counterparty *buys* into the MM's asks. Also prefer
-       asserting on the [inventory]/[currently_resting_orders] maps via
-       [sexp_of] over hand-rolled [print_string] scaffolding — it shows
-       structure and survives reordering. *)
+   remaining-size bug (also CR'd in market_maker.ml) is never exercised. Add
+   a case where a counterparty *buys* into the MM's asks. Also prefer
+   asserting on the [inventory]/[currently_resting_orders] maps via [sexp_of]
+   over hand-rolled [print_string] scaffolding — it shows structure and
+   survives reordering. *)
 let%expect_test "run: resulting inventory and outstanding orders state \
                  match what was expected"
   =

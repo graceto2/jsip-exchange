@@ -17,15 +17,7 @@ type t =
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
-(* Default participant when no "as <name>" is specified in the command.
-   [parse_command_with_default_participant] overrides this with the
-   caller-supplied default. *)
-(* [CR] claude for Grace: Naming — [default_p] is an unclear abbreviation;
-   spell it [default_participant] (or inline it). Bigger question: now that
-   the participant comes from login server-side, is the "anonymous" default
-   (and the whole "as <name>" grammar) still reachable? If not, delete it
-   rather than keep dead-but-documented behavior — see the CR on the "AS"
-   branch below. *)
+(* No "as <name>" should be specified in the command, since we require participants to log in before submitting orders. *)
 
 let parse_buy_or_sell ?default_participant input_tokens ~side =
   let open Result.Let_syntax in
