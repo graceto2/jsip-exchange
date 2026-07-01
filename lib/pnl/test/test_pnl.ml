@@ -51,7 +51,8 @@ let%expect_test "open a position, mark it, then partially close it" =
   let pnl = Pnl.apply_trade_report pnl (trade_report ~price_cents:15200) in
   show pnl Harness.alice;
   show pnl Harness.bob;
-  [%expect {|
+  [%expect
+    {|
     ((participant Alice)
      ((per_symbol
        (((symbol AAPL) (inventory 100) (average_entry_price (15000))
@@ -75,7 +76,8 @@ let%expect_test "open a position, mark it, then partially close it" =
   in
   show pnl Harness.alice;
   show pnl Harness.bob;
-  [%expect {|
+  [%expect
+    {|
     ((participant Alice)
      ((per_symbol
        (((symbol AAPL) (inventory 40) (average_entry_price (15000))
@@ -114,7 +116,8 @@ let%expect_test "selling through zero flips a long into a short" =
   in
   let pnl = Pnl.apply_trade_report pnl (trade_report ~price_cents:15500) in
   show pnl Harness.charlie;
-  [%expect {|
+  [%expect
+    {|
     ((participant Charlie)
      ((per_symbol
        (((symbol AAPL) (inventory -60) (average_entry_price (16000))

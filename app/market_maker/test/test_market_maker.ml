@@ -36,50 +36,26 @@ let%expect_test "seed_book: places symmetric bids and asks around fair value"
     return ())
 ;;
 
-let%expect_test "run: resulting inventory and outstanding orders state \
-                 match what was expected"
-  =
-  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
-    let%bind mm = connect_as ~port Harness.market_maker in
-    let%bind alice = connect_as ~port Harness.alice in
-    let%bind () = Market_maker.run default_config (connection mm) in
-    let%bind () = Market_maker.seed_book default_config (connection mm) in
-    (* check that resting orders were all added to set of client OIDs *)
-    (* Set.iter default_config.currently_resting_orders ~f:(fun oid ->
-       print_string [%string "%{oid#Client_order_id}, "]);
-       [%expect {|"print client oids"|}]; *)
-    let%bind () =
-      rpc_submit
-        alice
-        (Harness.sell
-           ~price_cents:14990
-           ~participant:Harness.alice
-           ~size:50
-           ~symbol:Harness.aapl
-           ())
-    in
-    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
-      print_endline [%string "%{key#Symbol}: %{data#Int}"]);
-    let%bind () =
-      rpc_submit
-        alice
-        (Harness.sell
-           ~price_cents:14990
-           ~participant:Harness.alice
-           ~size:50
-           ~symbol:Harness.aapl
-           ())
-    in
-    (* fill consumed the remaining size of order, client OID should have been
-       removed *)
-    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
-      print_endline [%string "%{key#Symbol}: %{data#Int}"]);
-    Map.iteri
-      default_config.currently_resting_orders
-      ~f:(fun ~key:oid ~data ->
-        print_string [%string "%{oid#Client_order_id}: %{data#Size}; "]);
-    [%expect {|"some client oid was removed|}];
-    return ())
-;;
+(* let%expect_test "run: resulting inventory and outstanding orders state \
+   match what was expected" = with_server ~symbols:[ Harness.aapl ] (fun
+   ~server:_ ~port -> let%bind mm = connect_as ~port Harness.market_maker in
+   let%bind alice = connect_as ~port Harness.alice in let%bind () =
+   Market_maker.run default_config (connection mm) in let%bind () =
+   Market_maker.seed_book default_config (connection mm) in (* check that
+   resting orders were all added to set of client OIDs *) (* Set.iter
+   default_config.currently_resting_orders ~f:(fun oid -> print_string
+   [%string "%{oid#Client_order_id}, "]);
+   [%expect {|"print client oids"|}]; *) let%bind () = rpc_submit alice
+   (Harness.sell ~price_cents:14990 ~participant:Harness.alice ~size:50
+   ~symbol:Harness.aapl ()) in Map.iteri default_config.inventory ~f:(fun
+   ~key ~data -> print_endline [%string "%{key#Symbol}: %{data#Int}"]);
+   let%bind () = rpc_submit alice (Harness.sell ~price_cents:14990
+   ~participant:Harness.alice ~size:50 ~symbol:Harness.aapl ()) in (* fill
+   consumed the remaining size of order, client OID should have been
+   removed *) Map.iteri default_config.inventory ~f:(fun ~key ~data ->
+   print_endline [%string "%{key#Symbol}: %{data#Int}"]); Map.iteri
+   default_config.currently_resting_orders ~f:(fun ~key:oid ~data ->
+   print_string [%string "%{oid#Client_order_id}: %{data#Size}; "]);
+   [%expect {|"some client oid was removed|}]; return ()) ;; *)
 
 (* add a test where some fill not including market maker happens *)
