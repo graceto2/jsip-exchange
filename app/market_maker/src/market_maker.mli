@@ -24,11 +24,14 @@ module Config : sig
         and offer at [fair_value + half_spread]. *)
     ; size_per_level : int (** Number of shares at each price level. *)
     ; num_levels : int
+        (* ; mutable inventory : int Symbol.Map.t (** An inventory counter
+           per symbol. Updated upon Fill events involving this market
+           maker. *) ; mutable currently_resting_orders :
+           Client_order_id.Set.t *)
     (** Number of price levels on each side. The bot places orders at
         [fair_value +/- spread], [fair_value +/- (spread + tick)], etc. *)
-    (* ; mutable inventory : int Symbol.Map.t (** An inventory counter per
-       symbol. Updated upon Fill events involving this market maker. *) ;
-       mutable currently_resting_orders : Client_order_id.Set.t *)
+    ; mutable inventory : int Symbol.Map.t
+    ; mutable currently_resting_orders : Size.t Client_order_id.Map.t
     }
   [@@deriving sexp_of]
 end
@@ -41,4 +44,4 @@ end
     participant's session feed. *)
 val seed_book : Config.t -> Rpc.Connection.t -> unit Deferred.t
 
-(* val run : Config.t -> Rpc.Connection.t -> unit Deferred.t *)
+val run : Config.t -> Rpc.Connection.t -> unit Deferred.t

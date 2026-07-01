@@ -39,6 +39,8 @@ let seed_market_maker ~where_to_connect =
     ; half_spread_cents = 10
     ; size_per_level = 100
     ; num_levels = 5
+    ; inventory = Map.empty (module Symbol)
+    ; currently_resting_orders = Map.empty (module Client_order_id)
     }
   in
   let%bind conn = connect_as ~where_to_connect mm_participant in
@@ -74,10 +76,9 @@ let trade_back_and_forth ~where_to_connect =
     ; fair_value_cents
     ; half_spread_cents = 5
     ; size_per_level = 25
-    ; num_levels =
-        3
-        (* ; inventory = Map.empty (module Symbol) ; currently_resting_orders
-           = Set.empty (module Client_order_id) *)
+    ; num_levels = 3
+    ; inventory = Map.empty (module Symbol)
+    ; currently_resting_orders = Map.empty (module Client_order_id)
     }
   in
   (* Two market makers total, each shared across all symbols — so we open

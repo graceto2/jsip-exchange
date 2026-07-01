@@ -1,7 +1,8 @@
 open! Core
 open! Async
 open Jsip_types
-open Jsip_bot_runtime
+
+(* open Jsip_bot_runtime *)
 module Context = Jsip_bot_runtime.Bot_runtime.Context
 
 let fill_client_oid = ref 0
@@ -63,16 +64,18 @@ let on_start (config : Config.t) (context : Context.t) =
 (* market maker only requotes *)
 let on_tick _config _context = return ()
 
-let on_event _config context event =
+let on_event (config : Config.t) (context : Context.t) event =
   let participant = Context.participant context in
   match event with
   | Exchange_event.Order_accept { request; order_id = _ } ->
     let client_oid = request.client_order_id in
-    (* config.currently_resting_orders <- Map.add_exn
-       config.currently_resting_orders ~key:client_oid ~data:request.size *)
-    ()
+    config.currently_resting_orders
+    <- Map.add_exn
+         config.currently_resting_orders
+         ~key:client_oid
+         ~data:request.size
   | Order_cancel
-      { client_order_id
+      { client_order_id = _
       ; participant = _
       ; symbol = _
       ; remaining_size = _
@@ -84,7 +87,7 @@ let on_event _config context event =
        config.currently_resting_orders client_order_id *)
   | Fill
       { fill_id = _
-      ; symbol
+      ; symbol = _
       ; price = _
       ; size
       ; aggressor_order_id = _
