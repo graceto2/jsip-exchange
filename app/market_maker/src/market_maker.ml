@@ -145,7 +145,6 @@ let run (config : Config.t) conn =
            ; resting_participant
            ; resting_client_order_id
            } ->
-         (* -----assume we are on some side of the fill; is this correc? *)
          let side = ref aggressor_side in
          let signed_size = ref (Size.to_int size) in
          let client_oid = ref aggressor_client_order_id in

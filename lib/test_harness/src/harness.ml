@@ -12,7 +12,9 @@ let alice = Participant.of_string "Alice"
 let bob = Participant.of_string "Bob"
 let charlie = Participant.of_string "Charlie"
 let market_maker = Participant.of_string "MarketMaker"
-let next_fill_id = ref 0
+
+(* Start at 10 because MM starts at 0. *)
+let next_fill_id = ref 10
 
 (* --- Harness --- *)
 

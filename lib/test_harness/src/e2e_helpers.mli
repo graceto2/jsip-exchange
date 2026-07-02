@@ -21,6 +21,9 @@ type client
 (** Connect a client to [port]. Logs in with [participant] argument. *)
 val connect_as : port:int -> Participant.t -> client Deferred.t
 
+(** Same as [connect_as], but doesn't subscribe to the participants feed. *)
+val login_as : port:int -> Participant.t -> client Deferred.t
+
 (** The raw RPC connection, useful for tests that exercise unusual RPC paths
     (audit log subscriptions, second clients on the same connection, etc.). *)
 val connection : client -> Rpc.Connection.t

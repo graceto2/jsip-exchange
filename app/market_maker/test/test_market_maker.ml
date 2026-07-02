@@ -40,74 +40,58 @@ let%expect_test "seed_book: places symmetric bids and asks around fair value"
     return ())
 ;;
 
-(* [CR] claude for Grace: Two issues with this test.
-
-   (2) It only ever has Alice *sell* into the MM's bids, so the ask-side
-   remaining-size bug (also CR'd in market_maker.ml) is never exercised. Add
-   a case where a counterparty *buys* into the MM's asks. Also prefer
-   asserting on the [inventory]/[currently_resting_orders] maps via [sexp_of]
-   over hand-rolled [print_string] scaffolding — it shows structure and
-   survives reordering. *)
 let%expect_test "run: resulting inventory and outstanding orders state \
                  match what was expected"
   =
   with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind alice = login_as ~port Harness.alice in
     let%bind mm = connect_as ~port Harness.market_maker in
-    let%bind alice = connect_as ~port Harness.alice in
     let%bind () = Market_maker.run default_config (connection mm) in
     let%bind () = Market_maker.seed_book default_config (connection mm) in
-    print_string "Currently resting orders: ";
-    Map.iteri
-      default_config.currently_resting_orders
-      ~f:(fun ~key:oid ~data ->
-        ignore data;
-        print_string [%string "%{oid#Client_order_id}, "]);
-    print_string "\n";
+    printf
+      "before: %d\n"
+      (Map.length default_config.currently_resting_orders);
     let%bind () =
       rpc_submit
         alice
         (Harness.sell
            ~price_cents:14990
            ~participant:Harness.alice
-           ~size:50
+           ~size:100
            ~symbol:Harness.aapl
            ())
     in
-    print_string "Current inventory: ";
-    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
-      print_string [%string "%{key#Symbol} (size = %{data#Int}), "]);
-    print_string "\n";
-    let%bind () =
-      rpc_submit
-        alice
-        (Harness.sell
-           ~price_cents:14990
-           ~participant:Harness.alice
-           ~size:50
-           ~symbol:Harness.aapl
-           ())
-    in
+    printf "after:%d\n" (Map.length default_config.currently_resting_orders);
     (* Fill consumed the remaining size of order, the first order (of client
        OID = 7) should have been removed. *)
     print_string "Current inventory: ";
-    Map.iteri default_config.inventory ~f:(fun ~key ~data ->
-      print_string [%string "%{key#Symbol} (size = %{data#Int}), "]);
-    print_string "\n";
-    print_string "Currently resting orders: ";
-    Map.iteri
-      default_config.currently_resting_orders
-      ~f:(fun ~key:oid ~data ->
-        ignore data;
-        print_string [%string "%{oid#Client_order_id}, "]);
+    printf
+      !"%{sexp: (Symbol.t * int) list}\n"
+      (Map.to_alist default_config.inventory);
     [%expect
       {|
-      Currently resting orders: 1, 2, 3, 4, 5, 6,
-      [for Alice] ACCEPTED id=7 AAPL SELL 50@$149.90 DAY
-      [for Alice] FILL fill_id=1 aggressor_client_oid=0 resting_client_oid=1 AAPL $149.90 x50 aggressor=7(Alice) SELL resting=1(MarketMaker)
-      Current inventory: AAPL (size = 50),
-      [for Alice] REJECTED AAPL SELL 50@$149.90 reason=Client order ID already in use
-      Current inventory: AAPL (size = 50),
-      Currently resting orders: 1, 2, 3, 4, 5, 6,
+      before: 6
+      after:5
+      Current inventory: ((AAPL 100))
       |}];
+    (* Test buying into MM's orders. *)
+    let%bind () =
+      rpc_submit
+        alice
+        (Harness.buy
+           ~price_cents:16000
+           ~participant:Harness.alice
+           ~size:75
+           ~symbol:Harness.aapl
+           ())
+    in
+    (* Should decrease by 75, since we sold to Alice. *)
+    print_string "Current inventory: ";
+    printf
+      !"%{sexp: (Symbol.t * int) list}\n"
+      (Map.to_alist default_config.inventory);
+    [%expect {| Current inventory: ((AAPL 25)) |}];
     return ())
 ;;
+
+(* Test cancel. *)
