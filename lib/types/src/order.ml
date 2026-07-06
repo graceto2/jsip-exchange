@@ -45,6 +45,57 @@ module Submit_request = struct
   ;;
 end
 
+module Submit_wire = struct
+  (* The submit request as it travels on the wire, matching the peer
+     exchange's [Order.Request.t]. Field order here is load-bearing: it fixes
+     the [bin_io] layout, and thus the submit-order RPC's query digest, so it
+     must stay client_order_id, symbol, side, price, size, time_in_force.
+     Note there is no [participant]: identity is not carried on the wire, it
+     comes from the authenticated session server-side. *)
+  type t =
+    { client_order_id : Client_order_id.t
+    ; symbol : Symbol.t
+    ; side : Side.t
+    ; price : Price.t
+    ; size : Size.t
+    ; time_in_force : Time_in_force.t
+    }
+  [@@deriving sexp, bin_io]
+
+  (* Drop the participant to turn an internal request into a wire request.
+     Used by clients right before dispatch. *)
+  let of_submit_request
+    ({ symbol
+     ; participant = _
+     ; side
+     ; price
+     ; size
+     ; time_in_force
+     ; client_order_id
+     } :
+      Submit_request.t)
+    =
+    { client_order_id; symbol; side; price; size; time_in_force }
+  ;;
+
+  (* Combine a wire request with the session's [participant] to recover the
+     internal {!Submit_request.t} the matching engine works with. *)
+  let to_submit_request
+    { client_order_id; symbol; side; price; size; time_in_force }
+    ~participant
+    : Submit_request.t
+    =
+    { symbol
+    ; participant
+    ; side
+    ; price
+    ; size
+    ; time_in_force
+    ; client_order_id
+    }
+  ;;
+end
+
 module Request = struct
   type t =
     | Cancel of Cancel_request.t

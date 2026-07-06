@@ -67,7 +67,10 @@ let login_as ~port participant =
 let connection client = client.conn
 
 let rpc_submit client request =
-  Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc client.conn request
+  Rpc.Rpc.dispatch_exn
+    Rpc_protocol.submit_order_rpc
+    client.conn
+    (Order.Submit_wire.of_submit_request request)
   >>| ok_exn
 ;;
 

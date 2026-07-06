@@ -32,7 +32,10 @@ let reset_fill_client_oids (config : Config.t) = config.fill_client_oid := 0
 let seed_book (config : Config.t) conn =
   let submit request =
     let%map result =
-      Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc conn request
+      Rpc.Rpc.dispatch_exn
+        Rpc_protocol.submit_order_rpc
+        conn
+        (Order.Submit_wire.of_submit_request request)
     in
     match result with
     | Ok () -> ()

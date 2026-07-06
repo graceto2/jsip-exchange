@@ -6,7 +6,7 @@ let submit_order_rpc =
   Rpc.Rpc.create
     ~name:"submit-order"
     ~version:1
-    ~bin_query:Order.Submit_request.bin_t
+    ~bin_query:Order.Submit_wire.bin_t
     ~bin_response:[%bin_type_class: unit Or_error.t]
     ~include_in_error_count:Only_on_exn
 ;;

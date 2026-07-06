@@ -91,7 +91,10 @@ market-data feed.|}];
              loop ())
         | Ok (Exchange_command.Submit request) ->
           let%bind.Deferred.Or_error () =
-            Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc conn request
+            Rpc.Rpc.dispatch_exn
+              Rpc_protocol.submit_order_rpc
+              conn
+              (Order.Submit_wire.of_submit_request request)
           in
           loop ()
         | Ok (Exchange_command.Cancel cancel_req) ->

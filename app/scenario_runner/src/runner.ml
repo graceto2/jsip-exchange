@@ -29,7 +29,7 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
     Rpc.Rpc.dispatch_exn
       Rpc_protocol.submit_order_rpc
       connection
-      submit_request
+      (Order.Submit_wire.of_submit_request submit_request)
   in
   let cancel client_order_id =
     Rpc.Rpc.dispatch_exn

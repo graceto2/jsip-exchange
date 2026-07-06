@@ -32,8 +32,8 @@ let%expect_test "e2e: two clients trade with each other" =
     [%expect
       {|
       [for Alice] ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 aggressor_client_oid=1 resting_client_oid=0 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 aggressor_client_oid=1 resting_client_oid=0 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=11 resting_client_oid=10 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=11 resting_client_oid=10 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       |}];
     return ())
 ;;
@@ -72,10 +72,10 @@ let%expect_test "e2e: three clients, sequential orders, shared book" =
     [%expect
       {|
       [for Alice] ACCEPTED id=3 AAPL BUY 80@$150.10 DAY
-      [for Alice] FILL fill_id=1 aggressor_client_oid=4 resting_client_oid=2 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Alice] FILL fill_id=2 aggressor_client_oid=4 resting_client_oid=3 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
-      [for Bob] FILL fill_id=1 aggressor_client_oid=4 resting_client_oid=2 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Charlie] FILL fill_id=2 aggressor_client_oid=4 resting_client_oid=3 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=14 resting_client_oid=12 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=2 aggressor_client_oid=14 resting_client_oid=13 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=14 resting_client_oid=12 AAPL $150.00 x50 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Charlie] FILL fill_id=2 aggressor_client_oid=14 resting_client_oid=13 AAPL $150.10 x30 aggressor=3(Alice) BUY resting=2(Charlie)
       |}];
     (* Verify book state *)
     let%bind book = rpc_book alice Harness.aapl in
@@ -131,8 +131,8 @@ let%expect_test "e2e: market data subscriber receives trade and BBO updates" =
     [%expect
       {|
       [for Alice] ACCEPTED id=2 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 aggressor_client_oid=6 resting_client_oid=5 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 aggressor_client_oid=6 resting_client_oid=5 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=16 resting_client_oid=15 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=16 resting_client_oid=15 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       [MD Subscriber] TRADE AAPL $150.00 x100
       [MD Subscriber] BBO AAPL bid=- ask=-
       |}];
@@ -280,12 +280,12 @@ let%expect_test "e2e: audit log subscriber sees full unfiltered stream \
     [%expect
       {|
       [AUDIT] ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-      [AUDIT] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [AUDIT] FILL fill_id=1 aggressor_client_oid=36 resting_client_oid=34 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
       [AUDIT] TRADE AAPL $150.00 x100
       [AUDIT] BBO AAPL bid=- ask=-
       [for Alice] ACCEPTED id=3 AAPL BUY 100@$150.00 DAY
-      [for Alice] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
-      [for Bob] FILL fill_id=1 aggressor_client_oid=26 resting_client_oid=24 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Alice] FILL fill_id=1 aggressor_client_oid=36 resting_client_oid=34 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
+      [for Bob] FILL fill_id=1 aggressor_client_oid=36 resting_client_oid=34 AAPL $150.00 x100 aggressor=3(Alice) BUY resting=1(Bob)
       |}];
     return ())
 ;;

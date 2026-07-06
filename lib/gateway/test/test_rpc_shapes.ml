@@ -29,7 +29,7 @@ let%expect_test "submit-order RPC" =
        : Async_rpc_kernel.Rpc_shapes.t)];
   [%expect
     {|
-    (Rpc (query accb8b9abcef75a3f4e6c35b0cb78f90)
+    (Rpc (query 1e10a37f621cf2c76cdb30f5d8917adb)
      (response 27f76252e5181aab209cd62aa6e42268))
     |}];
   return ()

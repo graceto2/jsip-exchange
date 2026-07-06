@@ -67,7 +67,9 @@ let start ~symbols ~port () =
                  Deferred.return
                    (Or_error.error_string "Error: not logged in")
                | Some participant ->
-                 handle_submit ~request_writer { request with participant })
+                 handle_submit
+                   ~request_writer
+                   (Order.Submit_wire.to_submit_request request ~participant))
         ; Rpc.Rpc.implement
             Rpc_protocol.cancel_order_rpc
             (fun (state : Connection_state.t) cancel_request ->

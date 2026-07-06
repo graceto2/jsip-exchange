@@ -34,6 +34,32 @@ module Submit_request : sig
   val to_string : t -> string
 end
 
+(** The submit request as it travels on the wire, mirroring the peer
+    exchange's [Order.Request.t]. Unlike {!Submit_request.t} it carries no
+    [participant]: identity comes from the authenticated session on the
+    server, never from the client. The field order is fixed by the
+    submit-order RPC's query digest and must not change. *)
+module Submit_wire : sig
+  type t =
+    { client_order_id : Client_order_id.t
+    ; symbol : Symbol.t
+    ; side : Side.t
+    ; price : Price.t
+    ; size : Size.t
+    ; time_in_force : Time_in_force.t
+    }
+  [@@deriving sexp, bin_io]
+
+  (** [of_submit_request req] drops [req]'s participant to produce the wire
+      form. Clients call this just before dispatching {!submit}. *)
+  val of_submit_request : Submit_request.t -> t
+
+  (** [to_submit_request t ~participant] combines the wire fields with the
+      session's authenticated [participant] to recover a {!Submit_request.t}.
+      This is the server's trust boundary. *)
+  val to_submit_request : t -> participant:Participant.t -> Submit_request.t
+end
+
 module Request : sig
   type t =
     | Cancel of Cancel_request.t
