@@ -24,10 +24,12 @@ end
 type t =
   { engine : Matching_engine.t
   ; dispatcher : Dispatcher.t
-  ; request_writer : Matching_engine_action.t Pipe.Writer.t
+  ; request_writer : (Time_ns.t * Matching_engine_action.t) Pipe.Writer.t
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
   ; logged_in_participants : Participant.Hash_set.t
+  ; stop : unit Ivar.t
+  (* Filled by [close] to stop the per-second stats sampler. *)
   }
 
 let require_login (conn_state : Connection_state.t) =
@@ -43,26 +45,42 @@ let require_login (conn_state : Connection_state.t) =
    without the server's memory growing unboundedly. *)
 let request_queue_size_budget = 1024
 
+(* How often the exchange publishes a metrics snapshot on [stats_rpc]. The
+   memory pane wants a sample "at least once per second"; the latency panes
+   report the samples gathered within each interval, so this doubles as the
+   window over which each snapshot's latencies accumulate. *)
+let stats_sample_interval = Time_ns.Span.of_sec 1.
+
+(* The request pipe carries each action paired with the [Time_ns.t] at which
+   its RPC handler accepted it. The timestamp travels *with* the action
+   through the pipe — rather than in a side channel — so it can never be
+   misattributed to a different request. The matching loop reads it back to
+   measure how long the request waited in the queue plus how long the engine
+   took to handle it: the submit/cancel latency the dashboard reports. *)
 let handle_submit
-  ~(request_writer : Matching_engine_action.t Pipe.Writer.t)
+  ~(request_writer : (Time_ns.t * Matching_engine_action.t) Pipe.Writer.t)
   ~participant
   request
   =
+  let enqueued_at = Time_ns.now () in
   let%map () =
-    Pipe.write_if_open request_writer (New_order { participant; request })
+    Pipe.write_if_open
+      request_writer
+      (enqueued_at, New_order { participant; request })
   in
   Ok ()
 ;;
 
 let handle_cancel
-  ~(request_writer : Matching_engine_action.t Pipe.Writer.t)
+  ~(request_writer : (Time_ns.t * Matching_engine_action.t) Pipe.Writer.t)
   ~participant
   client_order_id
   =
+  let enqueued_at = Time_ns.now () in
   let%map () =
     Pipe.write_if_open
       request_writer
-      (Cancel_order { participant; client_order_id })
+      (enqueued_at, Cancel_order { participant; client_order_id })
   in
   Ok ()
 ;;
@@ -70,26 +88,43 @@ let handle_cancel
 let start_matching_loop
   ~engine
   ~dispatcher
-  (request_reader : Matching_engine_action.t Pipe.Reader.t)
+  ~collector
+  (request_reader : (Time_ns.t * Matching_engine_action.t) Pipe.Reader.t)
   =
   don't_wait_for
-    (Pipe.iter_without_pushback request_reader ~f:(fun request ->
-       let events =
-         match request with
-         | Cancel_order { participant; client_order_id } ->
-           Matching_engine.cancel engine ~participant ~client_order_id
-         | New_order { participant; request } ->
-           Matching_engine.submit engine ~participant request
-       in
-       Dispatcher.dispatch dispatcher events))
+    (Pipe.iter_without_pushback
+       request_reader
+       ~f:(fun (enqueued_at, request) ->
+         let events =
+           match request with
+           | Cancel_order { participant; client_order_id } ->
+             Matching_engine.cancel engine ~participant ~client_order_id
+           | New_order { participant; request } ->
+             Matching_engine.submit engine ~participant request
+         in
+         let latency = Time_ns.diff (Time_ns.now ()) enqueued_at in
+         (match request with
+          | New_order _ ->
+            Metrics_collector.record_submit_latency collector latency
+          | Cancel_order _ ->
+            Metrics_collector.record_cancel_latency collector latency);
+         Dispatcher.dispatch dispatcher events))
 ;;
 
 let start ~symbols ~port () =
   let engine = Matching_engine.create symbols in
   let dispatcher = Dispatcher.create () in
+  let collector = Metrics_collector.create () in
   let request_reader, request_writer = Pipe.create () in
   Pipe.set_size_budget request_writer request_queue_size_budget;
-  start_matching_loop ~engine ~dispatcher request_reader;
+  start_matching_loop ~engine ~dispatcher ~collector request_reader;
+  let stop = Ivar.create () in
+  (* Publish one metrics snapshot per second until the server is closed. This
+     lives in the gateway, not the server binary, so any client that
+     subscribes to [stats_rpc] gets data regardless of which server mode is
+     running. *)
+  Clock_ns.every ~stop:(Ivar.read stop) stats_sample_interval (fun () ->
+    Dispatcher.push_stats dispatcher (Metrics_collector.snapshot collector));
   let logged_in_participants = Participant.Hash_set.create () in
   let implementations =
     Rpc.Implementations.create_exn
@@ -164,6 +199,10 @@ let start ~symbols ~port () =
                | Error _ as err -> return err
                | Ok session ->
                  Deferred.Or_error.return (Session.reader session))
+        ; Rpc.Pipe_rpc.implement Rpc_protocol.stats_rpc (fun conn_state () ->
+            ignore conn_state;
+            let reader = Dispatcher.subscribe_stats dispatcher in
+            return (Ok reader))
         ]
       ~on_unknown_rpc:`Close_connection
       ~on_exception:Log_on_background_exn
@@ -193,12 +232,16 @@ let start ~symbols ~port () =
   ; tcp_server
   ; port = actual_port
   ; logged_in_participants
+  ; stop
   }
 ;;
 
 let port t = t.port
 
 let close t =
+  Ivar.fill_if_empty t.stop ();
+  (* Fills the variable stop with something, so that the metric snapshots
+     stop getting recorded every second. *)
   Pipe.close t.request_writer;
   Tcp.Server.close t.tcp_server
 ;;

@@ -13,14 +13,14 @@ let bob = Participant.of_string "Bob"
 let charlie = Participant.of_string "Charlie"
 let market_maker = Participant.of_string "MarketMaker"
 
-(* Start at 10 because MM starts at 0. *)
-let next_fill_id = ref 10
-
 (* --- Harness --- *)
 
 type t = { engine : Matching_engine.t }
 
 let create ?(symbols = [ aapl; tsla; goog ]) () =
+  (* Reset the shared client-order-id counter so each test's generated ids
+     start from 0, independent of the tests that ran before it. *)
+  Client_order_id.For_testing.reset ();
   { engine = Matching_engine.create symbols }
 ;;
 
@@ -61,11 +61,10 @@ let make_request
   ?(symbol = aapl)
   ?(participant = alice)
   ?(time_in_force = Time_in_force.Day)
-  ?(client_order_id = !next_fill_id)
+  ?(client_order_id = Client_order_id.next ())
   ()
   : Order_request.t
   =
-  next_fill_id := !next_fill_id + 1;
   { symbol
   ; participant
   ; side

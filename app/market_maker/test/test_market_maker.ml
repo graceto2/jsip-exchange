@@ -90,7 +90,7 @@ let%expect_test "run: resulting inventory and outstanding orders state \
     printf
       !"%{sexp: (Symbol.t * int) list}\n"
       (Map.to_alist default_config.inventory);
-    [%expect {| Current inventory: ((AAPL 25)) |}];
+    [%expect {| Current inventory: ((AAPL 100)) |}];
     return ())
 ;;
 

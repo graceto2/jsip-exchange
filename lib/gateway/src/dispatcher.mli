@@ -41,6 +41,20 @@ val subscribe_market_data
     / admin tools. *)
 val subscribe_audit : t -> Exchange_event.t Pipe.Reader.t
 
+(** Subscribe to the per-second infrastructure-metrics feed (memory, per-RPC
+    latency). Mirrors {!subscribe_audit}, but on a separate registry carrying
+    {!Stats.Stats_snapshot.t} rather than [Exchange_event.t]: metrics are the
+    health of the process serving the exchange, not events that happened on
+    the exchange, so they travel on their own pipe and never through
+    [dispatch]. The snapshots are produced by [Exchange_server]'s per-second
+    sampler and published with {!push_stats}. Intended for the monitor /
+    dashboard. *)
+val subscribe_stats : t -> Stats.Stats_snapshot.t Pipe.Reader.t
+
+(** Publish one metrics [snapshot] to every stats subscriber. Called once per
+    second by [Exchange_server]'s sampler — never from the event path. *)
+val push_stats : t -> Stats.Stats_snapshot.t -> unit
+
 (** Create a fresh outbound [Session.t] for [participant] and register it so
     [dispatch] can route the participant's events to it. If a session already
     exists for that participant it is cleaned up first. Returns the new

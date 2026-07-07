@@ -62,3 +62,17 @@ val login_rpc : (String.t, Participant.t Or_error.t) Rpc.Rpc.t
 (** Delivers order accept/cancel/reject and fill events related to the
     participant. *)
 val session_feed_rpc : (unit, Exchange_event.t, Error.t) Rpc.Pipe_rpc.t
+
+(** Subscribe to the exchange's infrastructure-metrics feed: one
+    {!Stats.Stats_snapshot.t} per second carrying process memory and the
+    submit/cancel-order latencies measured over that second.
+
+    This is a *separate* RPC from {!audit_log_rpc} by design. The audit log
+    streams [Exchange_event.t] — things that happened on the exchange. These
+    are metrics about the process serving the exchange. Folding metrics into
+    [Exchange_event.t] would conflate two unrelated concerns and change the
+    audit log's wire contract, so they get their own RPC and their own pipe.
+
+    Like {!audit_log_rpc}, this is intended for the operator's monitoring and
+    dashboard tools, not for ordinary participants. *)
+val stats_rpc : (unit, Stats.Stats_snapshot.t, Error.t) Rpc.Pipe_rpc.t

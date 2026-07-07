@@ -6,12 +6,14 @@ type t =
   { market_data_subscribers_by_symbol :
       Exchange_event.t Pipe.Writer.t Bag.t Symbol.Table.t
   ; audit_subscribers : Exchange_event.t Pipe.Writer.t Bag.t
+  ; stats_subscribers : Stats.Stats_snapshot.t Pipe.Writer.t Bag.t
   ; participant_sessions : Session.t Participant.Table.t
   }
 
 let create () =
   { market_data_subscribers_by_symbol = Symbol.Table.create ()
   ; audit_subscribers = Bag.create ()
+  ; stats_subscribers = Bag.create ()
   ; participant_sessions = Participant.Table.create ()
   }
 ;;
@@ -61,6 +63,20 @@ let push_market_data t event symbol =
 let push_audit t event =
   Bag.iter t.audit_subscribers ~f:(fun writer ->
     Pipe.write_without_pushback_if_open writer event)
+;;
+
+let subscribe_stats t =
+  let reader, writer = Pipe.create () in
+  let elt = Bag.add t.stats_subscribers writer in
+  don't_wait_for
+    (let%map () = Pipe.closed writer in
+     Bag.remove t.stats_subscribers elt);
+  reader
+;;
+
+let push_stats t snapshot =
+  Bag.iter t.stats_subscribers ~f:(fun writer ->
+    Pipe.write_without_pushback_if_open writer snapshot)
 ;;
 
 let push_to_session t participant event =

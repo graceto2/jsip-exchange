@@ -67,3 +67,13 @@ let session_feed_rpc =
     ~bin_error:Error.bin_t
     ()
 ;;
+
+let stats_rpc =
+  Rpc.Pipe_rpc.create
+    ~name:"stats"
+    ~version:1
+    ~bin_query:Unit.bin_t
+    ~bin_response:Stats.Stats_snapshot.bin_t
+    ~bin_error:Error.bin_t
+    ()
+;;
