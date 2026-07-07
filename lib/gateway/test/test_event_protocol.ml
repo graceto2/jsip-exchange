@@ -95,14 +95,14 @@ let%expect_test "format_event: all event types" =
   let events =
     [ Exchange_event.Order_accept
         { order_id = Order_id.of_string "1"
+        ; participant = Participant.of_string "Alice"
         ; request =
-            { symbol = Symbol.of_string "AAPL"
-            ; participant = Participant.of_string "Alice"
+            { client_order_id = 0
+            ; symbol = Symbol.of_string "AAPL"
             ; side = Buy
             ; price = Price.of_int_cents 15000
             ; size = Size.of_int 100
             ; time_in_force = Day
-            ; client_order_id = 0
             }
         }
     ; Fill
@@ -127,14 +127,14 @@ let%expect_test "format_event: all event types" =
         ; client_order_id = 2
         }
     ; Order_reject
-        { request =
-            { symbol = Symbol.of_string "GOOG"
-            ; participant = Participant.of_string "Alice"
+        { participant = Participant.of_string "Alice"
+        ; request =
+            { client_order_id = 3
+            ; symbol = Symbol.of_string "GOOG"
             ; side = Sell
             ; price = Price.of_int_cents 28000
             ; size = Size.of_int 10
             ; time_in_force = Day
-            ; client_order_id = 3
             }
         ; reason = "unknown symbol"
         }

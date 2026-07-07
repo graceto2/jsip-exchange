@@ -32,7 +32,6 @@ let name = "market_maker"
 
 let on_start (config : Config.t) (context : Context.t) =
   let submit request = Context.submit context request in
-  let participant = Context.participant context in
   Deferred.List.iter
     ~how:`Parallel
     (List.init config.num_levels ~f:Fn.id)
@@ -42,29 +41,27 @@ let on_start (config : Config.t) (context : Context.t) =
         config.fill_client_oid := !(config.fill_client_oid) + 1;
         Deferred.ignore_m
           (submit
-             ({ symbol = config.symbol
-              ; participant
+             ({ client_order_id = !(config.fill_client_oid)
+              ; symbol = config.symbol
               ; side = Buy
               ; price = Price.of_int_cents (config.fair_value_cents - offset)
               ; size = Size.of_int config.size_per_level
               ; time_in_force = Day
-              ; client_order_id = !(config.fill_client_oid)
               }
-              : Order.Submit_request.t))
+              : Order.Request.t))
       and () =
         config.fill_client_oid := !(config.fill_client_oid) + 1;
         (* is deferred ignore okay here? *)
         Deferred.ignore_m
           (submit
-             ({ symbol = config.symbol
-              ; participant
+             ({ client_order_id = !(config.fill_client_oid)
+              ; symbol = config.symbol
               ; side = Sell
               ; price = Price.of_int_cents (config.fair_value_cents + offset)
               ; size = Size.of_int config.size_per_level
               ; time_in_force = Day
-              ; client_order_id = !(config.fill_client_oid)
               }
-              : Order.Submit_request.t))
+              : Order.Request.t))
       in
       Deferred.unit)
 ;;

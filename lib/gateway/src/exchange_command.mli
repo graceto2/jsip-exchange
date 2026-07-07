@@ -21,26 +21,20 @@
     BUY 2 AAPL 100 150.00 DAY
     v}
 
-    Time-in-force defaults to DAY if omitted. Participant defaults to
-    "anonymous" if omitted. *)
+    Time-in-force defaults to DAY if omitted. Identity is not part of a
+    command: the server attaches the authenticated participant from the
+    session. *)
 
 open! Core
 open! Jsip_types
 
 type t =
-  | Submit of Order.Submit_request.t
-  | Cancel of Order.Cancel_request.t
+  | Submit of Order.Request.t
+  | Cancel of Client_order_id.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
-(** Parse a text command into an order request. Returns [Error] with a
-    human-readable message if the input is malformed. *)
-(* val parse_command : string -> (Order.Submit_request.t, string) Result.t *)
-
-(** If no participant is provided in the input, and if none is specified in
-    the command text, uses [default] as the participant. Useful for clients
-    that already know their identity. *)
-(* val parse_command_with_default_participant : string ->
-   default:Participant.t -> (Order.Submit_request.t, string) Result.t *)
-
-val parse : ?default_participant:Participant.t -> string -> t Or_error.t
+(** Parse a text command into a {!t}. Returns [Error] with a human-readable
+    message if the input is malformed. Identity is not part of a command —
+    the server attaches the authenticated participant from the session. *)
+val parse : string -> t Or_error.t

@@ -70,7 +70,7 @@ let rpc_submit client request =
   Rpc.Rpc.dispatch_exn
     Rpc_protocol.submit_order_rpc
     client.conn
-    (Order.Submit_wire.of_submit_request request)
+    (Harness.to_request request)
   >>| ok_exn
 ;;
 
@@ -78,7 +78,10 @@ let rpc_book client symbol =
   Rpc.Rpc.dispatch_exn Rpc_protocol.book_query_rpc client.conn symbol
 ;;
 
-let rpc_cancel client cancel_req =
-  Rpc.Rpc.dispatch_exn Rpc_protocol.cancel_order_rpc client.conn cancel_req
+let rpc_cancel client client_order_id =
+  Rpc.Rpc.dispatch_exn
+    Rpc_protocol.cancel_order_rpc
+    client.conn
+    client_order_id
   >>| ok_exn
 ;;

@@ -7,64 +7,24 @@
 
 open! Core
 
-(** An order as submitted by a participant (before the exchange assigns an
-    order ID). This is what the gateway receives. *)
-module Cancel_request : sig
-  type t =
-    { participant : Participant.t
-    ; client_order_id : Client_order_id.t
-    }
-  [@@deriving sexp, bin_io]
+(** A request to submit an order, exactly as it travels on the wire.
 
-  val to_string : t -> string
-end
-
-module Submit_request : sig
-  type t =
-    { symbol : Symbol.t
-    ; participant : Participant.t
-    ; side : Side.t
-    ; price : Price.t
-    ; size : Size.t (** Number of shares/units. Must be positive. *)
-    ; time_in_force : Time_in_force.t
-    ; client_order_id : Client_order_id.t
-    }
-  [@@deriving sexp, bin_io]
-
-  val to_string : t -> string
-end
-
-(** The submit request as it travels on the wire, mirroring the peer
-    exchange's [Order.Request.t]. Unlike {!Submit_request.t} it carries no
+    This mirrors the peer exchange's [Order.Request.t]. It carries no
     [participant]: identity comes from the authenticated session on the
     server, never from the client. The field order is fixed by the
     submit-order RPC's query digest and must not change. *)
-module Submit_wire : sig
+module Request : sig
   type t =
     { client_order_id : Client_order_id.t
     ; symbol : Symbol.t
     ; side : Side.t
     ; price : Price.t
-    ; size : Size.t
+    ; size : Size.t (** Number of shares/units. Must be positive. *)
     ; time_in_force : Time_in_force.t
     }
   [@@deriving sexp, bin_io]
 
-  (** [of_submit_request req] drops [req]'s participant to produce the wire
-      form. Clients call this just before dispatching {!submit}. *)
-  val of_submit_request : Submit_request.t -> t
-
-  (** [to_submit_request t ~participant] combines the wire fields with the
-      session's authenticated [participant] to recover a {!Submit_request.t}.
-      This is the server's trust boundary. *)
-  val to_submit_request : t -> participant:Participant.t -> Submit_request.t
-end
-
-module Request : sig
-  type t =
-    | Cancel of Cancel_request.t
-    | Submit of Submit_request.t
-  [@@deriving sexp]
+  val to_string : t -> string
 end
 
 (** A live order on the exchange, with an ID assigned by the matching engine
@@ -75,14 +35,20 @@ val to_string : t -> string
 
 (** {2 Construction} *)
 
-(** Create a live order from a request and an assigned order ID. The
+(** Create a live order from a wire [request], the [participant] recovered
+    from the authenticated session, and an assigned [order_id]. The
     [remaining_size] starts equal to the request's [size]. Raises if the
     request's [size] is non-positive. *)
-val create : Submit_request.t -> order_id:Order_id.t -> t
+val create
+  :  Request.t
+  -> order_id:Order_id.t
+  -> participant:Participant.t
+  -> t
 
 (** {2 Accessors} *)
 
 val order_id : t -> Order_id.t
+val client_order_id : t -> Client_order_id.t
 val symbol : t -> Symbol.t
 val participant : t -> Participant.t
 val side : t -> Side.t

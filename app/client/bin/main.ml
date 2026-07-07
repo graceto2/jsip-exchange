@@ -54,9 +54,7 @@ market-data feed.|}];
       if String.is_empty line
       then loop ()
       else (
-        match
-          Exchange_command.parse ~default_participant:participant line
-        with
+        match Exchange_command.parse line with
         | Ok (Exchange_command.Book symbol) ->
           let%bind result =
             Rpc.Rpc.dispatch_exn Rpc_protocol.book_query_rpc conn symbol
@@ -91,18 +89,15 @@ market-data feed.|}];
              loop ())
         | Ok (Exchange_command.Submit request) ->
           let%bind.Deferred.Or_error () =
-            Rpc.Rpc.dispatch_exn
-              Rpc_protocol.submit_order_rpc
-              conn
-              (Order.Submit_wire.of_submit_request request)
+            Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc conn request
           in
           loop ()
-        | Ok (Exchange_command.Cancel cancel_req) ->
+        | Ok (Exchange_command.Cancel client_order_id) ->
           let%bind.Deferred.Or_error () =
             Rpc.Rpc.dispatch_exn
               Rpc_protocol.cancel_order_rpc
               conn
-              cancel_req
+              client_order_id
           in
           loop ()
         | Error err ->

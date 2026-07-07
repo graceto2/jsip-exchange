@@ -43,9 +43,29 @@ val create : ?symbols:Symbol.t list -> unit -> t
 (** The underlying matching engine. *)
 val engine : t -> Matching_engine.t
 
+(** A test submit request bundled with the participant it is sent on behalf
+    of. The wire type {!Order.Request.t} carries no participant — the server
+    attaches it from the authenticated session — so the harness pairs them so
+    a single [buy]/[sell] value fully describes a test order. *)
+module Order_request : sig
+  type t =
+    { symbol : Symbol.t
+    ; participant : Participant.t
+    ; side : Side.t
+    ; price : Price.t
+    ; size : Size.t
+    ; time_in_force : Time_in_force.t
+    ; client_order_id : Client_order_id.t
+    }
+end
+
+(** Drop the participant to recover the wire {!Order.Request.t} (what
+    actually crosses the RPC boundary). Used by the end-to-end helpers. *)
+val to_request : Order_request.t -> Order.Request.t
+
 (** {2 Order request builders}
 
-    These build [Order.Submit_request.t] values with sensible defaults:
+    These build {!Order_request.t} values with sensible defaults:
     - symbol: AAPL
     - participant: Alice
     - size: 100
@@ -59,7 +79,7 @@ val buy
   -> ?time_in_force:Time_in_force.t
   -> ?client_order_id:Client_order_id.t
   -> unit
-  -> Order.Submit_request.t
+  -> Order_request.t
 
 val sell
   :  price_cents:int
@@ -69,7 +89,7 @@ val sell
   -> ?time_in_force:Time_in_force.t
   -> ?client_order_id:Client_order_id.t
   -> unit
-  -> Order.Submit_request.t
+  -> Order_request.t
 
 (** {2 Actions}
 
@@ -78,10 +98,10 @@ val sell
 
 (** Submit an order request through the matching engine and print all
     resulting events. Returns the event list for further inspection. *)
-val submit : t -> Order.Submit_request.t -> Exchange_event.t list
+val submit : t -> Order_request.t -> Exchange_event.t list
 
 (** Submit and print, discarding the return value. *)
-val submit_ : t -> Order.Submit_request.t -> unit
+val submit_ : t -> Order_request.t -> unit
 
 (** {2 Sample events}
 
@@ -96,10 +116,10 @@ val submit_ : t -> Order.Submit_request.t -> unit
 val sample_events : Exchange_event.t list
 
 (** As [submit], but events are not printed. *)
-val submit_quiet : t -> Order.Submit_request.t -> Exchange_event.t list
+val submit_quiet : t -> Order_request.t -> Exchange_event.t list
 
 (** As [submit_quiet], but event are not printed. *)
-val submit_quiet_ : t -> Order.Submit_request.t -> unit
+val submit_quiet_ : t -> Order_request.t -> unit
 
 (** {2 Formatting}
 

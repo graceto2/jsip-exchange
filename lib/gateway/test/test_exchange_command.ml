@@ -7,11 +7,11 @@ let print_parse line =
   match Exchange_command.parse line with
   | Error err -> print_endline [%string "%{Error.to_string_hum err}"]
   | Ok (Exchange_command.Submit req) ->
-    print_endline [%string "%{req#Order.Submit_request}"]
+    print_endline [%string "%{req#Order.Request}"]
   | Ok (Exchange_command.Book symb) | Ok (Exchange_command.Subscribe symb) ->
     print_endline [%string "%{symb#Symbol}"]
-  | Ok (Exchange_command.Cancel cancel_req) ->
-    print_endline [%string "%{cancel_req#Order.Cancel_request}"]
+  | Ok (Exchange_command.Cancel client_order_id) ->
+    print_endline [%string "%{client_order_id#Client_order_id}"]
 ;;
 
 let%expect_test "parse: basic subscribe" =
@@ -28,12 +28,12 @@ let%expect_test "parse: basic book" =
 
 let%expect_test "parse: basic buy" =
   print_parse "BUY 1 AAPL 100 150.25";
-  [%expect {| BUY 1 AAPL 100@$150.25 DAY as anonymous |}]
+  [%expect {| BUY 1 AAPL 100@$150.25 DAY |}]
 ;;
 
 let%expect_test "parse: basic sell" =
   print_parse "SELL 1 TSLA 50 200.00";
-  [%expect {| SELL 1 TSLA 50@$200.00 DAY as anonymous |}]
+  [%expect {| SELL 1 TSLA 50@$200.00 DAY |}]
 ;;
 
 let%expect_test "parse: case insensitive side" =
@@ -41,19 +41,19 @@ let%expect_test "parse: case insensitive side" =
   print_parse "Buy 1 AAPL 100 150.00";
   [%expect
     {|
-    BUY 1 AAPL 100@$150.00 DAY as anonymous
-    BUY 1 AAPL 100@$150.00 DAY as anonymous
+    BUY 1 AAPL 100@$150.00 DAY
+    BUY 1 AAPL 100@$150.00 DAY
     |}]
 ;;
 
 let%expect_test "parse: with IOC time-in-force" =
   print_parse "BUY 1 AAPL 100 150.00 IOC";
-  [%expect {| BUY 1 AAPL 100@$150.00 IOC as anonymous |}]
+  [%expect {| BUY 1 AAPL 100@$150.00 IOC |}]
 ;;
 
 let%expect_test "parse: with explicit DAY" =
   print_parse "SELL 1 AAPL 200 151.00 DAY";
-  [%expect {| SELL 1 AAPL 200@$151.00 DAY as anonymous |}]
+  [%expect {| SELL 1 AAPL 200@$151.00 DAY |}]
 ;;
 
 (* let%expect_test "parse: with participant" = print_parse "BUY 1 AAPL 100
@@ -65,17 +65,17 @@ let%expect_test "parse: with explicit DAY" =
 
 let%expect_test "parse: symbol is uppercased" =
   print_parse "BUY 1 aapl 100 150.00";
-  [%expect {| BUY 1 AAPL 100@$150.00 DAY as anonymous |}]
+  [%expect {| BUY 1 AAPL 100@$150.00 DAY |}]
 ;;
 
 let%expect_test "parse: extra whitespace is ignored" =
   print_parse "  BUY  1 AAPL   100   150.00  ";
-  [%expect {| BUY 1 AAPL 100@$150.00 DAY as anonymous |}]
+  [%expect {| BUY 1 AAPL 100@$150.00 DAY |}]
 ;;
 
 let%expect_test "parse: price with dollar sign" =
   print_parse "BUY 1 AAPL 100 $150.25";
-  [%expect {| BUY 1 AAPL 100@$150.25 DAY as anonymous |}]
+  [%expect {| BUY 1 AAPL 100@$150.25 DAY |}]
 ;;
 
 (* --- Parse errors --- *)
@@ -133,30 +133,6 @@ let%expect_test "parse error: unknown time-in-force" =
   [%expect {| ("Time_in_force.of_string: invalid string" (value QQQ)) |}]
 ;;
 
-(* --- parse_command_with_default_participant --- *)
-
-let%expect_test "default participant: used when none specified" =
-  let default = Participant.of_string "DefaultTrader" in
-  let req =
-    Exchange_command.parse
-      ~default_participant:default
-      "BUY 1 AAPL 100 150.00"
-    |> ok_exn
-  in
-  match req with
-  | Submit order ->
-    print_endline [%string "participant=%{order.participant#Participant}"];
-    [%expect {| participant=DefaultTrader |}]
-  | _ -> [%expect.unreachable]
-;;
-
-(* let%expect_test "default participant: overridden by explicit 'as'" = let
-   default = Participant.of_string "DefaultTrader" in let req =
-   Exchange_command.parse ~default_participant:default "BUY 1 AAPL 100 150.00
-   as Alice" |> ok_exn in match req with | Submit order -> print_endline
-   [%string "participant=%{order.participant#Participant}"];
-   [%expect {| participant=Alice |}] | _ -> [%expect.unreachable] ;; *)
-
 (* --- Round-trip: parse then format --- *)
 
 let%expect_test "round-trip: parse a command, submit, format result" =
@@ -167,15 +143,15 @@ let%expect_test "round-trip: parse a command, submit, format result" =
     t
     (Harness.sell ~price_cents:15000 ~participant:Harness.bob ());
   (* Parse a buy command from text and submit it *)
-  let request =
-    Exchange_command.parse
-      ~default_participant:Harness.alice
-      "BUY 1 AAPL 100 150.00"
-    |> ok_exn
-  in
+  let request = Exchange_command.parse "BUY 1 AAPL 100 150.00" |> ok_exn in
   match request with
   | Submit order ->
-    let events = Matching_engine.submit (Harness.engine t) order in
+    let events =
+      Matching_engine.submit
+        (Harness.engine t)
+        ~participant:Harness.alice
+        order
+    in
     print_endline (Event_protocol.format_events events);
     [%expect
       {|

@@ -13,16 +13,16 @@ let make_order
   ()
   =
   Order.create
-    ({ symbol = Harness.aapl
-     ; participant
+    ({ client_order_id
+     ; symbol = Harness.aapl
      ; side
      ; price = Price.of_int_cents price_cents
      ; size = Size.of_int size
      ; time_in_force = Day
-     ; client_order_id
      }
-     : Order.Submit_request.t)
+     : Order.Request.t)
     ~order_id:(Order_id.For_testing.of_int order_id)
+    ~participant
 ;;
 
 (* --- add / find / remove --- *)

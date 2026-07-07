@@ -41,7 +41,15 @@ val subscribe_market_data
     / admin tools. *)
 val subscribe_audit : t -> Exchange_event.t Pipe.Reader.t
 
-val set_up_session : t -> Participant.t -> unit Deferred.t
+(** Create a fresh outbound [Session.t] for [participant] and register it so
+    [dispatch] can route the participant's events to it. If a session already
+    exists for that participant it is cleaned up first. Returns the new
+    session, which the server hands to the client via [session_feed_rpc]. *)
+val set_up_session : t -> Participant.t -> Session.t
+
+(** Deregister [session] so the dispatcher stops routing to it. Called when
+    the client's connection closes. *)
+val clean_up_session : t -> Session.t -> unit
 
 (** Route each event to every interested subscriber:
 

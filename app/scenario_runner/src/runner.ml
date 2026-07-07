@@ -25,17 +25,14 @@ let start_bot ~where_to_connect ~oracle (Bot_spec.T spec) =
       (Participant.to_string spec.participant)
     >>| Or_error.ok_exn
   in
-  let submit submit_request =
-    Rpc.Rpc.dispatch_exn
-      Rpc_protocol.submit_order_rpc
-      connection
-      (Order.Submit_wire.of_submit_request submit_request)
+  let submit request =
+    Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc connection request
   in
   let cancel client_order_id =
     Rpc.Rpc.dispatch_exn
       Rpc_protocol.cancel_order_rpc
       connection
-      { participant; client_order_id }
+      client_order_id
   in
   let bot =
     Bot_runtime.create

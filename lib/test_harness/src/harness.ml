@@ -28,6 +28,32 @@ let engine t = t.engine
 
 (* --- Builders --- *)
 
+module Order_request = struct
+  (* A test submit request bundled with the participant it is sent on behalf
+     of. The wire type [Order.Request.t] carries no participant — the server
+     attaches it from the authenticated session — so the harness pairs them
+     here to keep the ergonomic [submit t (buy ...)] one-liner. *)
+  type t =
+    { symbol : Symbol.t
+    ; participant : Participant.t
+    ; side : Side.t
+    ; price : Price.t
+    ; size : Size.t
+    ; time_in_force : Time_in_force.t
+    ; client_order_id : Client_order_id.t
+    }
+end
+
+let to_request (r : Order_request.t) : Order.Request.t =
+  { client_order_id = r.client_order_id
+  ; symbol = r.symbol
+  ; side = r.side
+  ; price = r.price
+  ; size = r.size
+  ; time_in_force = r.time_in_force
+  }
+;;
+
 let make_request
   ~side
   ~price_cents
@@ -37,7 +63,7 @@ let make_request
   ?(time_in_force = Time_in_force.Day)
   ?(client_order_id = !next_fill_id)
   ()
-  : Order.Submit_request.t
+  : Order_request.t
   =
   next_fill_id := !next_fill_id + 1;
   { symbol
@@ -107,28 +133,41 @@ let print_events ?(show = Show.all) events =
 
 let print_event event = print_endline (Event_protocol.format_event event)
 
-let submit t request =
-  let events = Matching_engine.submit t.engine request in
+let submit t (request : Order_request.t) =
+  let events =
+    Matching_engine.submit
+      t.engine
+      ~participant:request.participant
+      (to_request request)
+  in
   print_events events;
   events
 ;;
 
 let submit_ t request = ignore (submit t request : Exchange_event.t list)
-let submit_quiet t request = Matching_engine.submit (engine t) request
+
+let submit_quiet t (request : Order_request.t) =
+  Matching_engine.submit
+    (engine t)
+    ~participant:request.participant
+    (to_request request)
+;;
 
 let sample_events : Exchange_event.t list =
-  let order_request : Order.Submit_request.t =
-    { symbol = aapl
-    ; participant = alice
+  let order_request : Order.Request.t =
+    { client_order_id = 1
+    ; symbol = aapl
     ; side = Buy
     ; price = Price.of_int_cents 15000
     ; size = Size.of_int 100
     ; time_in_force = Day
-    ; client_order_id = 1
     }
   in
   [ Order_accept
-      { order_id = Order_id.For_testing.of_int 1; request = order_request }
+      { order_id = Order_id.For_testing.of_int 1
+      ; participant = alice
+      ; request = order_request
+      }
   ; Fill
       { fill_id = 1
       ; symbol = aapl
@@ -150,7 +189,11 @@ let sample_events : Exchange_event.t list =
       ; reason = Ioc_remainder
       ; client_order_id = 2
       }
-  ; Order_reject { request = order_request; reason = "unknown symbol" }
+  ; Order_reject
+      { participant = alice
+      ; request = order_request
+      ; reason = "unknown symbol"
+      }
   ; Best_bid_offer_update
       { symbol = aapl
       ; bbo =

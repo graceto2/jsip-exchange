@@ -12,14 +12,14 @@ module Verb = struct
 end
 
 type t =
-  | Submit of Order.Submit_request.t
-  | Cancel of Order.Cancel_request.t
+  | Submit of Order.Request.t
+  | Cancel of Client_order_id.t
   | Book of Symbol.t
   | Subscribe of Symbol.t
 
 (* No "as <name>" should be specified in the command, since we require participants to log in before submitting orders. *)
 
-let parse_buy_or_sell ?default_participant input_tokens ~side =
+let parse_buy_or_sell input_tokens ~side =
   let open Result.Let_syntax in
   match input_tokens with
   | client_order_id :: symbol_str :: size_str :: price_str :: rest ->
@@ -49,39 +49,32 @@ let parse_buy_or_sell ?default_participant input_tokens ~side =
          | _ -> Ok (Time_in_force.of_string tif_str, rest'))
       | [] -> Ok (Day, [])
     in
-    let%bind participant =
+    let%bind () =
       match rest with
-      | [] ->
-        (match default_participant with
-         | Some p -> Ok p
-         | None -> Ok (Participant.of_string "anonymous"))
-        (* Should never reach this state, because we require the participant
-           to log in. Kept it here because there are many parsing test cases
-           without a participant. *)
+      | [] -> Ok ()
       | _ ->
         let trailing = String.concat ~sep:" " rest in
         Error [%string "unexpected trailing arguments: %{trailing}"]
     in
     Ok
       (Submit
-         ({ symbol
-          ; participant
+         ({ client_order_id = Int.of_string client_order_id
+          ; symbol
           ; side
           ; price
           ; size = Size.of_int size
           ; time_in_force
-          ; client_order_id = Int.of_string client_order_id
           }
-          : Order.Submit_request.t))
+          : Order.Request.t))
   | _ ->
     Error "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]"
 ;;
 
-let parse_buy_or_sell_exn ?default_participant list ~side =
-  Result.ok_or_failwith (parse_buy_or_sell ?default_participant list ~side)
+let parse_buy_or_sell_exn list ~side =
+  Result.ok_or_failwith (parse_buy_or_sell list ~side)
 ;;
 
-let parse_exn ?default_participant string =
+let parse_exn string =
   let line = String.strip string in
   let parts =
     String.split line ~on:' ' |> List.filter ~f:(Fn.non String.is_empty)
@@ -91,9 +84,8 @@ let parse_exn ?default_participant string =
   | first_word :: rest ->
     let verb = Verb.of_string first_word in
     (match verb with
-     | Buy -> parse_buy_or_sell_exn ?default_participant rest ~side:Side.Buy
-     | Sell ->
-       parse_buy_or_sell_exn ?default_participant rest ~side:Side.Sell
+     | Buy -> parse_buy_or_sell_exn rest ~side:Side.Buy
+     | Sell -> parse_buy_or_sell_exn rest ~side:Side.Sell
      | Book ->
        (match rest with
         | symbol :: [] -> Book (Symbol.of_string symbol)
@@ -104,6 +96,4 @@ let parse_exn ?default_participant string =
         | _ -> failwith "failed subscribe, too many entries"))
 ;;
 
-let parse ?default_participant string =
-  Or_error.try_with (fun () -> parse_exn ?default_participant string)
-;;
+let parse string = Or_error.try_with (fun () -> parse_exn string)

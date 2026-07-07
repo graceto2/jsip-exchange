@@ -32,9 +32,9 @@ val connection : client -> Rpc.Connection.t
     has enqueued the request. Participant-targeted events (acceptance, fills,
     rejection) are currently printed on the server's stdout via the
     dispatcher's session stub. *)
-val rpc_submit : client -> Order.Submit_request.t -> unit Deferred.t
+val rpc_submit : client -> Harness.Order_request.t -> unit Deferred.t
 
 (** Query the book via RPC. *)
 val rpc_book : client -> Symbol.t -> Book.t option Deferred.t
 
-val rpc_cancel : client -> Order.Cancel_request.t -> unit Deferred.t
+val rpc_cancel : client -> Client_order_id.t -> unit Deferred.t

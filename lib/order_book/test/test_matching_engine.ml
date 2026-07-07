@@ -5,13 +5,18 @@ open Jsip_test_harness
 
 (** Helper: submit and print, filtering out market data events for cleaner
     matching-logic tests. *)
-let submit t (request : Order.Submit_request.t) =
-  let events = Matching_engine.submit (Harness.engine t) request in
+let submit t (request : Harness.Order_request.t) =
+  let events =
+    Matching_engine.submit
+      (Harness.engine t)
+      ~participant:request.participant
+      (Harness.to_request request)
+  in
   Harness.print_events ~show:Harness.Show.no_market_data events;
   events
 ;;
 
-let submit_ t (request : Order.Submit_request.t) =
+let submit_ t (request : Harness.Order_request.t) =
   ignore (submit t request : Exchange_event.t list)
 ;;
 

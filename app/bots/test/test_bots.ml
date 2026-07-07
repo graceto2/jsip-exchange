@@ -57,7 +57,7 @@ let make_recording_bot
   bot, submitted, cancelled
 ;;
 
-let print_submitted (submitted : Order.Submit_request.t list ref) =
+let print_submitted (submitted : Order.Request.t list ref) =
   let recent = List.rev !submitted in
   List.iter recent ~f:(fun req ->
     printf
@@ -92,14 +92,14 @@ let%expect_test "make_recording_bot wires up a runnable bot" =
       bot
       (Order_accept
          { order_id = Order_id.For_testing.of_int 1
+         ; participant = alice
          ; request =
-             { symbol = aapl
-             ; participant = alice
+             { client_order_id = 1
+             ; symbol = aapl
              ; side = Buy
              ; price = Price.of_int_cents 15000
              ; size = Size.of_int 10
              ; time_in_force = Day
-             ; client_order_id = 1
              }
          })
   in

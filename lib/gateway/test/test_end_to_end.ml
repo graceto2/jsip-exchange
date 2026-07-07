@@ -345,9 +345,7 @@ let%expect_test "submit with client order ID, then cancel by that ID" =
     in
     [%expect {| [for Alice] ACCEPTED id=1 AAPL SELL 100@$150.00 DAY |}];
     (* alice cancels order she just placed - should recieve BLAH *)
-    let%bind () =
-      rpc_cancel alice { participant = Harness.alice; client_order_id = 1 }
-    in
+    let%bind () = rpc_cancel alice 1 in
     [%expect
       {| [for Alice] CANCELLED order_id=1 client_oid=1 AAPL remaining=100 reason=PARTICIPANT_REQUESTED |}];
     return ())
@@ -382,14 +380,10 @@ let%expect_test "cancel an already-filled order - should produce not found \
       [for Alice] FILL fill_id=1 aggressor_client_oid=354 resting_client_oid=2090 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       [for Bob] FILL fill_id=1 aggressor_client_oid=354 resting_client_oid=2090 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
       |}];
-    let%bind () =
-      rpc_cancel alice { participant = Harness.alice; client_order_id = 354 }
-    in
+    let%bind () = rpc_cancel alice 354 in
     [%expect
       {| [for Alice] REJECTED cancel request with client_oid=354 reason=Order not found |}];
-    let%bind () =
-      rpc_cancel bob { participant = Harness.bob; client_order_id = 2090 }
-    in
+    let%bind () = rpc_cancel bob 2090 in
     [%expect
       {| [for Bob] REJECTED cancel request with client_oid=2090 reason=Order not found |}];
     return ())
@@ -399,9 +393,7 @@ let%expect_test "cancel a non existent order" =
   with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
     let%bind alice = connect_as ~port Harness.alice in
     (* alice tries to cancel *)
-    let%bind () =
-      rpc_cancel alice { participant = Harness.alice; client_order_id = 354 }
-    in
+    let%bind () = rpc_cancel alice 354 in
     [%expect
       {| [for Alice] REJECTED cancel request with client_oid=354 reason=Order with that ID was never placed |}];
     return ())
@@ -442,9 +434,7 @@ let%expect_test "canceled best offer, should emit BBO update" =
       [MD Subscriber] BBO AAPL bid=- ask=$150.00 x100
       |}];
     (* cancel bob's sell *)
-    let%bind () =
-      rpc_cancel bob { participant = Harness.bob; client_order_id = 293 }
-    in
+    let%bind () = rpc_cancel bob 293 in
     [%expect
       {|
       [for Bob] CANCELLED order_id=1 client_oid=293 AAPL remaining=100 reason=PARTICIPANT_REQUESTED

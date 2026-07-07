@@ -76,18 +76,22 @@ let rec match_loop t ~book ~order ~fill_id =
       fill_event :: trade_event :: remaining_events, next_fill_id)
 ;;
 
-let submit t (request : Order.Submit_request.t) =
+let submit t ~participant (request : Order.Request.t) =
   match Map.find t.books request.symbol with
   | None ->
-    [ Exchange_event.Order_reject { request; reason = "unknown symbol" } ]
+    [ Exchange_event.Order_reject
+        { participant; request; reason = "unknown symbol" }
+    ]
   | Some book ->
     let order_id = Order_id.Generator.next t.order_id_gen in
-    let order = Order.create request ~order_id in
+    let order = Order.create request ~order_id ~participant in
     let client_order_id = request.client_order_id in
-    let accepted = Exchange_event.Order_accept { order_id; request } in
+    let accepted =
+      Exchange_event.Order_accept { order_id; participant; request }
+    in
     let rejected =
       Exchange_event.Order_reject
-        { request; reason = "Client order ID already in use" }
+        { participant; request; reason = "Client order ID already in use" }
     in
     (* [client_order_ids] and [server_id_to_client_id] are never pruned —
        they retain every order ever submitted, so they grow without bound.
@@ -143,9 +147,7 @@ let submit t (request : Order.Submit_request.t) =
        List.concat [ [ accepted ]; fill_events; post_events; bbo_events ])
 ;;
 
-let cancel t (cancel_request : Order.Cancel_request.t) =
-  let client_order_id = cancel_request.client_order_id in
-  let participant = cancel_request.participant in
+let cancel t ~participant ~client_order_id =
   let order = Hashtbl.find t.client_order_ids client_order_id in
   (* find order in client_order_id, which contains ALL orders that have been
      successfully submitted so far, even cancelled/filled ones *)

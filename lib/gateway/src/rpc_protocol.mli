@@ -25,9 +25,13 @@ open Jsip_types
     The error case covers connection-level failures only — connection closed,
     server shutting down, etc. — not domain errors like unknown symbols
     (those arrive as [Order_reject] events on the session feed). *)
-val submit_order_rpc : (Order.Submit_wire.t, unit Or_error.t) Rpc.Rpc.t
+val submit_order_rpc : (Order.Request.t, unit Or_error.t) Rpc.Rpc.t
 
-val cancel_order_rpc : (Order.Cancel_request.t, unit Or_error.t) Rpc.Rpc.t
+(** Cancel a resting order the client previously submitted. The wire carries
+    only the [Client_order_id.t]; the server reattaches the authenticated
+    participant from the session, so a client cannot cancel another
+    participant's order. Mirrors {!submit_order_rpc}'s trust boundary. *)
+val cancel_order_rpc : (Client_order_id.t, unit Or_error.t) Rpc.Rpc.t
 
 (** Query the order book for a given symbol. Returns a structured snapshot of
     all resting orders on both sides, if a book for that symbol exists. *)

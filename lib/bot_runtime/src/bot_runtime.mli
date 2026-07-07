@@ -36,7 +36,7 @@ module Context : sig
       matching engine's response — [Order_accept], [Fill], [Order_reject],
       etc. — arrives asynchronously on the bot's session feed, which the
       runtime delivers to [on_event]. *)
-  val submit : t -> Order.Submit_request.t -> unit Deferred.Or_error.t
+  val submit : t -> Order.Request.t -> unit Deferred.Or_error.t
 
   (** Cancel one of this bot's resting orders via the exchange's RPC. Same
       one-way shape as [submit]: success/failure of the cancel attempt
@@ -82,7 +82,7 @@ val create
   -> participant:Participant.t
   -> oracle:Jsip_fundamental.Fundamental_oracle.t
   -> rng:Splittable_random.t
-  -> submit:(Order.Submit_request.t -> unit Deferred.Or_error.t)
+  -> submit:(Order.Request.t -> unit Deferred.Or_error.t)
   -> cancel:(Client_order_id.t -> unit Deferred.Or_error.t)
   -> tick_interval:Time_ns.Span.t
   -> t

@@ -1,57 +1,6 @@
 open! Core
 
-module Cancel_request = struct
-  type t =
-    { participant : Participant.t
-    ; client_order_id : Client_order_id.t
-    }
-  [@@deriving sexp, bin_io]
-
-  let to_string { participant; client_order_id } =
-    [%string
-      "%{participant#Participant} wants to cancel \
-       %{client_order_id#Client_order_id}"]
-  ;;
-end
-
-module Submit_request = struct
-  type t =
-    { symbol : Symbol.t
-    ; participant : Participant.t
-    ; side : Side.t
-    ; price : Price.t
-    ; size : Size.t
-    ; time_in_force : Time_in_force.t
-    ; client_order_id : Client_order_id.t
-    }
-  [@@deriving sexp, bin_io]
-
-  let to_string
-    { symbol
-    ; participant
-    ; side
-    ; price
-    ; size
-    ; time_in_force
-    ; client_order_id
-    }
-    =
-    let price = Price.to_string_dollar price in
-    let size = Size.to_int size in
-    [%string
-      "%{side#Side} %{client_order_id#Client_order_id} %{symbol#Symbol} \
-       %{size#Int}@%{price} %{time_in_force#Time_in_force} as \
-       %{participant#Participant}"]
-  ;;
-end
-
-module Submit_wire = struct
-  (* The submit request as it travels on the wire, matching the peer
-     exchange's [Order.Request.t]. Field order here is load-bearing: it fixes
-     the [bin_io] layout, and thus the submit-order RPC's query digest, so it
-     must stay client_order_id, symbol, side, price, size, time_in_force.
-     Note there is no [participant]: identity is not carried on the wire, it
-     comes from the authenticated session server-side. *)
+module Request = struct
   type t =
     { client_order_id : Client_order_id.t
     ; symbol : Symbol.t
@@ -62,49 +11,19 @@ module Submit_wire = struct
     }
   [@@deriving sexp, bin_io]
 
-  (* Drop the participant to turn an internal request into a wire request.
-     Used by clients right before dispatch. *)
-  let of_submit_request
-    ({ symbol
-     ; participant = _
-     ; side
-     ; price
-     ; size
-     ; time_in_force
-     ; client_order_id
-     } :
-      Submit_request.t)
+  let to_string { client_order_id; symbol; side; price; size; time_in_force }
     =
-    { client_order_id; symbol; side; price; size; time_in_force }
+    let price = Price.to_string_dollar price in
+    let size = Size.to_int size in
+    [%string
+      "%{side#Side} %{client_order_id#Client_order_id} %{symbol#Symbol} \
+       %{size#Int}@%{price} %{time_in_force#Time_in_force}"]
   ;;
-
-  (* Combine a wire request with the session's [participant] to recover the
-     internal {!Submit_request.t} the matching engine works with. *)
-  let to_submit_request
-    { client_order_id; symbol; side; price; size; time_in_force }
-    ~participant
-    : Submit_request.t
-    =
-    { symbol
-    ; participant
-    ; side
-    ; price
-    ; size
-    ; time_in_force
-    ; client_order_id
-    }
-  ;;
-end
-
-module Request = struct
-  type t =
-    | Cancel of Cancel_request.t
-    | Submit of Submit_request.t
-  [@@deriving sexp]
 end
 
 type t =
   { order_id : Order_id.t
+  ; client_order_id : Client_order_id.t
   ; symbol : Symbol.t
   ; participant : Participant.t
   ; side : Side.t
@@ -117,6 +36,7 @@ type t =
 
 let to_string
   ({ order_id
+   ; client_order_id
    ; symbol = _
    ; participant
    ; side = _
@@ -130,18 +50,20 @@ let to_string
   let price = Price.to_string_dollar price in
   let size = Size.to_int remaining_size in
   [%string
-    "%{price} x%{size#Int} (id=%{order_id#Order_id}, \
+    "%{price} x%{size#Int} (server_id=%{order_id#Order_id}, \
+     client_id=%{client_order_id#Client_order_id}, \
      %{participant#Participant})"]
 ;;
 
-let create (req : Submit_request.t) ~order_id =
+let create (req : Request.t) ~order_id ~participant =
   if Size.( <= ) req.size Size.zero
   then
     raise_s
       [%message "Order.create: size must be positive" (req.size : Size.t)];
   { order_id
+  ; client_order_id = req.client_order_id
   ; symbol = req.symbol
-  ; participant = req.participant
+  ; participant
   ; side = req.side
   ; price = req.price
   ; size = req.size
@@ -151,6 +73,7 @@ let create (req : Submit_request.t) ~order_id =
 ;;
 
 let order_id t = t.order_id
+let client_order_id t = t.client_order_id
 let symbol t = t.symbol
 let participant t = t.participant
 let side t = t.side

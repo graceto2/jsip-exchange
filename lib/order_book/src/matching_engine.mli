@@ -22,9 +22,17 @@ val create : Symbol.t list -> t
 
     The event list is always non-empty (at minimum an acceptance or
     rejection). *)
-val submit : t -> Order.Submit_request.t -> Exchange_event.t list
+val submit
+  :  t
+  -> participant:Participant.t
+  -> Order.Request.t
+  -> Exchange_event.t list
 
-val cancel : t -> Order.Cancel_request.t -> Exchange_event.t list
+val cancel
+  :  t
+  -> participant:Participant.t
+  -> client_order_id:Client_order_id.t
+  -> Exchange_event.t list
 
 (** {2 Queries} *)
 

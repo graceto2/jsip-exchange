@@ -32,17 +32,14 @@ let reset_fill_client_oids (config : Config.t) = config.fill_client_oid := 0
 let seed_book (config : Config.t) conn =
   let submit request =
     let%map result =
-      Rpc.Rpc.dispatch_exn
-        Rpc_protocol.submit_order_rpc
-        conn
-        (Order.Submit_wire.of_submit_request request)
+      Rpc.Rpc.dispatch_exn Rpc_protocol.submit_order_rpc conn request
     in
     match result with
     | Ok () -> ()
     | Error msg ->
       [%log.error
         "market_maker: submit failed"
-          (request : Order.Submit_request.t)
+          (request : Order.Request.t)
           (msg : Error.t)]
   in
   Deferred.List.iter
@@ -53,27 +50,25 @@ let seed_book (config : Config.t) conn =
       let%bind () =
         config.fill_client_oid := !(config.fill_client_oid) + 1;
         submit
-          ({ symbol = config.symbol
-           ; participant = config.participant
+          ({ client_order_id = !(config.fill_client_oid)
+           ; symbol = config.symbol
            ; side = Buy
            ; price = Price.of_int_cents (config.fair_value_cents - offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = !(config.fill_client_oid)
            }
-           : Order.Submit_request.t)
+           : Order.Request.t)
       and () =
         config.fill_client_oid := !(config.fill_client_oid) + 1;
         submit
-          ({ symbol = config.symbol
-           ; participant = config.participant
+          ({ client_order_id = !(config.fill_client_oid)
+           ; symbol = config.symbol
            ; side = Sell
            ; price = Price.of_int_cents (config.fair_value_cents + offset)
            ; size = Size.of_int config.size_per_level
            ; time_in_force = Day
-           ; client_order_id = !(config.fill_client_oid)
            }
-           : Order.Submit_request.t)
+           : Order.Request.t)
       in
       Deferred.unit)
 ;;
@@ -123,7 +118,7 @@ let run (config : Config.t) conn =
   don't_wait_for
     (Pipe.iter_without_pushback session_feed ~f:(fun event ->
        match event with
-       | Order_accept { request; order_id = _ } ->
+       | Order_accept { request; participant = _; order_id = _ } ->
          (* record id in currently_resting_orders *)
          add_resting_order config request.client_order_id request.size
        | Order_cancel

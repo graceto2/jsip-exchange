@@ -75,22 +75,16 @@ let push_to_session t participant event =
 
 let clean_up_session t session =
   let participant = Session.participant session in
-  Hashtbl.remove t.participant_sessions participant;
-  Deferred.return ()
+  Hashtbl.remove t.participant_sessions participant
 ;;
 
 let set_up_session t participant =
-  let old_session = Hashtbl.find t.participant_sessions participant in
-  let%bind () =
-    match old_session with
-    | Some session -> clean_up_session t session
-    | None -> Deferred.return ()
-  in
-  Hashtbl.add_exn
-    t.participant_sessions
-    ~key:participant
-    ~data:(Session.create participant);
-  Deferred.return ()
+  (match Hashtbl.find t.participant_sessions participant with
+   | Some session -> clean_up_session t session
+   | None -> ());
+  let session = Session.create participant in
+  Hashtbl.add_exn t.participant_sessions ~key:participant ~data:session;
+  session
 ;;
 
 let dispatch_event t (event : Exchange_event.t) =
@@ -100,9 +94,9 @@ let dispatch_event t (event : Exchange_event.t) =
     push_market_data t event symbol
   | Trade_report { symbol; price = _; size = _ } ->
     push_market_data t event symbol
-  | Order_accept { order_id = _; request }
-  | Order_reject { request; reason = _ } ->
-    push_to_session t request.participant event
+  | Order_accept { order_id = _; participant; request = _ }
+  | Order_reject { participant; request = _; reason = _ } ->
+    push_to_session t participant event
   | Order_cancel
       { order_id = _
       ; participant
