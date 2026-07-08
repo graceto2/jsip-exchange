@@ -3,7 +3,7 @@ open Core_bench
 
 (* Sizes are kept modest: [Silly_store] is O(n) per operation, so [build] is
    ~O(n^2). *)
-let sizes = [ 10; 100; 300; 1000; 10000 ]
+let sizes = [ 10; 100; 1000 ]
 let present_key n = n / 2
 let absent_key = -1
 
@@ -43,9 +43,23 @@ let bench_silly =
    side-effecting [List.init], whose evaluation order isn't guaranteed
    left-to-right. *)
 let seq_tests ~name ~create ~set ~get =
-  (* "TODO: benchmark for part 4, 0b" *)
-  ignore (name, create, set, get);
-  []
+  let build n =
+    let store = create () in
+    for key = 0 to n - 1 do
+      set store ~key ~data:key
+    done;
+    store
+  in
+  List.concat_map sizes ~f:(fun n ->
+    let prebuilt = build n in
+    [ Bench.Test.create ~name:(sprintf "%s build (n=%d)" name n) (fun () ->
+        ignore (build n : _))
+    ; Bench.Test.create ~name:(sprintf "%s get_hit (n=%d)" name n) (fun () ->
+        ignore (get prebuilt (present_key n) : int option))
+    ; Bench.Test.create
+        ~name:(sprintf "%s get_miss (n=%d)" name n)
+        (fun () -> ignore (get prebuilt absent_key : int option))
+    ])
 ;;
 
 let bench_sequential =
@@ -68,9 +82,48 @@ let bench_sequential =
    [Int.to_string] for string keys), so the same helper covers both int- and
    string-keyed stores. *)
 let assoc_tests ~name ~create ~set ~get ~key_of_index =
-  (* "TODO: benchmark for part 4, 0c" *)
-  ignore (name, create, set, get, key_of_index);
-  []
+  let build n =
+    let store = create () in
+    for index = 0 to n - 1 do
+      set store ~key:(key_of_index index) ~data:index
+    done;
+    store
+  in
+  List.concat_map sizes ~f:(fun n ->
+    let prebuilt = build n in
+    [ Bench.Test.create ~name:(sprintf "%s build (n=%d)" name n) (fun () ->
+        ignore (build n : _))
+    ; Bench.Test.create ~name:(sprintf "%s get_hit (n=%d)" name n) (fun () ->
+        ignore (get prebuilt (key_of_index (present_key n)) : int option))
+    ; Bench.Test.create
+        ~name:(sprintf "%s get_miss (n=%d)" name n)
+        (fun () ->
+           ignore (get prebuilt (key_of_index absent_key) : int option))
+    ])
+;;
+
+let assoc_random_tests ~name ~create ~set ~key_of_index ~random_element =
+  let state = Random.State.make [| 42 |] in
+  List.concat_map sizes ~f:(fun n ->
+    let prebuilt =
+      let store = create () in
+      for index = 0 to n - 1 do
+        set store ~key:(key_of_index index) ~data:index
+      done;
+      store
+    in
+    [ Bench.Test.create ~name:(sprintf "%s random (n=%d)" name n) (fun () ->
+        ignore (random_element prebuilt state))
+    ])
+;;
+
+let bench_random =
+  assoc_random_tests
+    ~name:"Hashtable_int"
+    ~create:Associatives.Hashtable_int.create
+    ~set:Associatives.Hashtable_int.set
+    ~key_of_index:Fn.id
+    ~random_element:Associatives.Hashtable_int.random_element
 ;;
 
 let bench_associative =
@@ -117,9 +170,30 @@ let bench_associative =
 (* Silly-vs-non-silly allocation: the same task done two ways, differing only
    in how much they allocate (watch the mWd/Run column). Inputs are prebuilt
    so the timed op is just the pattern under test. *)
+
 let bench_allocation =
-  (* TODO: benchmark for part 4, 0d *)
-  []
+  List.concat_map sizes ~f:(fun n ->
+    let xs = List.init n ~f:(fun index -> index + 1) in
+    let threshold = n / 2 in
+    let is_greater x = x > threshold in
+    [ Bench.Test.create
+        ~name:(sprintf "Build_list silly (n=%d)" n)
+        (fun () -> ignore (Allocations.Build_list.silly xs : int list))
+    ; Bench.Test.create
+        ~name:(sprintf "Build_list non_silly (n=%d)" n)
+        (fun () -> ignore (Allocations.Build_list.non_silly xs : int list))
+    ; Bench.Test.create
+        ~name:(sprintf "First_match silly (n=%d)" n)
+        (fun () ->
+           ignore
+             (Allocations.First_match.silly xs ~f:is_greater : int option))
+    ; Bench.Test.create
+        ~name:(sprintf "First_match non_silly (n=%d)" n)
+        (fun () ->
+           ignore
+             (Allocations.First_match.non_silly xs ~f:is_greater
+              : int option))
+    ])
 ;;
 
 let command =
@@ -129,5 +203,6 @@ let command =
     ; "sequential", Bench.make_command bench_sequential
     ; "associative", Bench.make_command bench_associative
     ; "allocation", Bench.make_command bench_allocation
+    ; "random", Bench.make_command bench_random
     ]
 ;;

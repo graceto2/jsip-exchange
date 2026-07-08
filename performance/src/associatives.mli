@@ -18,6 +18,8 @@ module Hashtable_int : sig
   val create : unit -> t
   val set : t -> key:int -> data:int -> unit
   val get : t -> int -> int option
+  val remove : t -> int -> unit
+  val random_element : t -> Random.State.t -> int option
 end
 
 module Map_string : sig
