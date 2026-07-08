@@ -144,6 +144,7 @@ let dispatch t events = List.iter events ~f:(dispatch_event t)
 
 module For_testing = struct
   let audit_subscriber_count t = Bag.length t.audit_subscribers
+  let stats_subscriber_count t = Bag.length t.stats_subscribers
 end
 
 let get_session t participant =

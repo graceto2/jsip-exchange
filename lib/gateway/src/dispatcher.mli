@@ -82,4 +82,5 @@ val get_session : t -> Participant.t -> Session.t option
 
 module For_testing : sig
   val audit_subscriber_count : t -> int
+  val stats_subscriber_count : t -> int
 end

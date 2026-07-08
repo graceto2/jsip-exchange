@@ -328,6 +328,48 @@ let%expect_test "dispatcher: closing a subscriber's reader removes the \
 ;;
 
 (* ---------------------------------------------------------------- *)
+(* Stats / metrics feed tests *)
+(* ---------------------------------------------------------------- *)
+
+let%expect_test "e2e: a client subscribing to stats_rpc receives snapshots" =
+  with_server ~symbols:[ Harness.aapl ] (fun ~server:_ ~port ->
+    let%bind sub = connect_as ~port (Participant.of_string "Monitor") in
+    let%bind result =
+      Rpc.Pipe_rpc.dispatch Rpc_protocol.stats_rpc (connection sub) ()
+    in
+    let reader =
+      match result with
+      | Ok (Ok (reader, _id)) -> reader
+      | _ -> failwith "subscribe failed"
+    in
+    (* TODO(you): the server pushes a snapshot once per second
+       (Exchange_server.stats_sample_interval). Read the first snapshot off
+       [reader] (e.g. [Pipe.read reader]) and assert on the *deterministic*
+       parts only — [sampled_at]/[live_words] vary run-to-run, so print
+       something stable like "the latency lists are empty on an idle server"
+       or just that a snapshot arrived. *)
+    ignore (reader : Stats.Stats_snapshot.t Pipe.Reader.t);
+    [%expect {| |}];
+    return ())
+;;
+
+let%expect_test "dispatcher: closing a stats subscriber's reader removes the \
+                 writer"
+  =
+  let dispatcher = Dispatcher.create () in
+  (* TODO(you): mirror the audit-log cleanup test above, but for stats:
+     - print stats_subscriber_count (expect 0)
+     - subscribe_stats twice, print count (expect 2)
+     - close one reader, [yield_until_no_jobs_remain], print count (expect 1)
+     - close the other, yield, print count (expect 0)
+     Use Dispatcher.For_testing.stats_subscriber_count and
+     Dispatcher.subscribe_stats. *)
+  ignore (dispatcher : Dispatcher.t);
+  [%expect {| |}];
+  return ()
+;;
+
+(* ---------------------------------------------------------------- *)
 (* Cancel order tests *)
 (* ---------------------------------------------------------------- *)
 

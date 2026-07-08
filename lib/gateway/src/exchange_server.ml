@@ -95,19 +95,16 @@ let start_matching_loop
     (Pipe.iter_without_pushback
        request_reader
        ~f:(fun (enqueued_at, request) ->
+         let latency = Time_ns.diff (Time_ns.now ()) enqueued_at in
          let events =
            match request with
            | Cancel_order { participant; client_order_id } ->
+             Metrics_collector.record_cancel_latency collector latency;
              Matching_engine.cancel engine ~participant ~client_order_id
            | New_order { participant; request } ->
+             Metrics_collector.record_submit_latency collector latency;
              Matching_engine.submit engine ~participant request
          in
-         let latency = Time_ns.diff (Time_ns.now ()) enqueued_at in
-         (match request with
-          | New_order _ ->
-            Metrics_collector.record_submit_latency collector latency
-          | Cancel_order _ ->
-            Metrics_collector.record_cancel_latency collector latency);
          Dispatcher.dispatch dispatcher events))
 ;;
 
