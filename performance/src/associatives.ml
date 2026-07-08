@@ -20,6 +20,9 @@ module Hashtable_int = struct
   let remove = Hashtbl.remove
 
   let random_element t state =
+    (* To make this O(1), need a way to index into the data set. Best way is
+       to make t have a Hashtbl and an array of values that are synced. Trade
+       performance for memory + a sync invariant. *)
     List.random_element ~random_state:state (Hashtbl.data t)
   ;;
 end
