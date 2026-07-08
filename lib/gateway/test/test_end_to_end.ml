@@ -353,17 +353,17 @@ let%expect_test "e2e: a client subscribing to stats_rpc receives snapshots" =
     return ())
 ;;
 
-let%expect_test "dispatcher: closing a stats subscriber's reader removes the \
-                 writer"
+let%expect_test "dispatcher: closing a stats subscriber's reader removes \
+                 the writer"
   =
   let dispatcher = Dispatcher.create () in
   (* TODO(you): mirror the audit-log cleanup test above, but for stats:
      - print stats_subscriber_count (expect 0)
      - subscribe_stats twice, print count (expect 2)
      - close one reader, [yield_until_no_jobs_remain], print count (expect 1)
-     - close the other, yield, print count (expect 0)
-     Use Dispatcher.For_testing.stats_subscriber_count and
-     Dispatcher.subscribe_stats. *)
+     - close the other, yield, print count (expect 0) Use
+       Dispatcher.For_testing.stats_subscriber_count and
+       Dispatcher.subscribe_stats. *)
   ignore (dispatcher : Dispatcher.t);
   [%expect {| |}];
   return ()

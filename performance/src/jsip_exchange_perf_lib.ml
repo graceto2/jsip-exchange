@@ -3,7 +3,7 @@ open Core_bench
 
 (* Sizes are kept modest: [Silly_store] is O(n) per operation, so [build] is
    ~O(n^2). *)
-let sizes = [ 10; 100; 1000 ]
+let sizes = [ 10; 100; 300; 1000; 10000 ]
 let present_key n = n / 2
 let absent_key = -1
 
