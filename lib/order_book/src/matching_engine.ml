@@ -1,8 +1,11 @@
 open! Core
 open Jsip_types
 
+(* [symbol_to_id] maps each traded symbol to its index in [books]; should not
+   be changed after initializing in create. Makes symbol lookup fast O(1). *)
 type t =
-  { books : Order_book.t Symbol.Map.t
+  { symbol_to_id : int Symbol.Table.t
+  ; books : Order_book.t array
   ; order_id_gen : Order_id.Generator.t
   ; mutable next_fill_id : int
   ; client_order_ids : Order.t Client_order_id.Table.t
@@ -11,11 +14,15 @@ type t =
 [@@deriving sexp_of]
 
 let create symbols =
+  let symbol_to_id = Symbol.Table.create () in
   let books =
-    List.map symbols ~f:(fun sym -> sym, Order_book.create sym)
-    |> Symbol.Map.of_alist_exn
+    List.mapi symbols ~f:(fun idx symbol ->
+      Hashtbl.add_exn symbol_to_id ~key:symbol ~data:idx;
+      Order_book.create symbol)
+    |> Array.of_list
   in
-  { books
+  { symbol_to_id
+  ; books
   ; order_id_gen = Order_id.Generator.create ()
   ; next_fill_id = 1
   ; client_order_ids = Client_order_id.Table.create ()
@@ -23,7 +30,15 @@ let create symbols =
   }
 ;;
 
-let book t symbol = Map.find t.books symbol
+(* Resolve a symbol to its book: hash to an id, then index the array. Returns
+   [None] for a symbol this engine does not trade. *)
+let find_book t symbol =
+  match Hashtbl.find t.symbol_to_id symbol with
+  | None -> None
+  | Some id -> Some t.books.(id)
+;;
+
+let book t symbol = find_book t symbol
 
 (** Run the matching loop: repeatedly find a compatible resting order and
     fill against it. Returns the list of Fill and Trade_report events
@@ -77,7 +92,7 @@ let rec match_loop t ~book ~order ~fill_id =
 ;;
 
 let submit t ~participant (request : Order.Request.t) =
-  match Map.find t.books request.symbol with
+  match find_book t request.symbol with
   | None ->
     [ Exchange_event.Order_reject
         { participant; request; reason = "unknown symbol" }
@@ -160,7 +175,7 @@ let cancel t ~participant ~client_order_id =
         }
     ]
   | Some order ->
-    (match Map.find t.books (Order.symbol order) with
+    (match find_book t (Order.symbol order) with
      (* find order in our order book -- here, filled/cancelled orders have
         been removed *)
      | None ->

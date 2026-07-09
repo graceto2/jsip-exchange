@@ -110,6 +110,20 @@ let engine_with_n_asks ?(min_price = 10_000) n =
   engine
 ;;
 
+(** Build a matching engine trading [n] distinct symbols, and return it
+    alongside one symbol (near the middle of the set) to look up. Used to
+    benchmark the pure symbol->book resolution in {!Matching_engine.book},
+    independent of any matching work. The symbols are uppercase-alphanumeric
+    (e.g. "SYM00042") so they pass {!Symbol.of_string} validation. *)
+let engine_with_n_symbols n =
+  let symbols =
+    List.init n ~f:(fun i -> Symbol.of_string (sprintf "SYM%05d" i))
+  in
+  let engine = Matching_engine.create symbols in
+  let probe = List.nth_exn symbols (n / 2) in
+  engine, probe
+;;
+
 (* ---------------------------------------------------------------- *)
 (* Order_book micro-benchmarks *)
 (* ---------------------------------------------------------------- *)
@@ -164,6 +178,18 @@ let bench_snapshot ~n =
   let book, _gen = book_with_n_asks_at_same_price ~price_cents:10000 n in
   Bench.Test.create ~name:[%string "snapshot (n=%{n#Int})"] (fun () ->
     ignore (Order_book.snapshot book : Book.t))
+;;
+
+(* Pure symbol->book resolution. This is the lookup Exercise 2 optimizes: with
+   the [Symbol.Map] it is O(log n) string comparisons; with a hashtable +
+   array it becomes one hash plus an O(1) array index. We look up an existing
+   symbol so the cost is a real resolution, not an early [None]. *)
+let bench_book_lookup ~n =
+  let engine, probe = engine_with_n_symbols n in
+  Bench.Test.create
+    ~name:[%string "book_lookup (symbols=%{n#Int})"]
+    (fun () ->
+       ignore (Matching_engine.book engine probe : Order_book.t option))
 ;;
 
 let bench_add_remove ~n =
@@ -319,6 +345,9 @@ let bench_find_match_alloc ~n =
 let () =
   let sizes = [ 10; 50; 100; 500 ] in
   let snapshot_tests = List.map sizes ~f:(fun n -> bench_snapshot ~n) in
+  let symbol_lookup_tests =
+    List.map [ 10; 100; 10_000 ] ~f:(fun n -> bench_book_lookup ~n)
+  in
   let tests =
     List.concat
       [ (* Order book micro-benchmarks at various sizes *)
@@ -340,5 +369,6 @@ let () =
        ~summary:"JSIP order-book benchmarks"
        [ "existing", Bench.make_command tests
        ; "snapshot", Bench.make_command snapshot_tests
+       ; "symbol-lookup", Bench.make_command symbol_lookup_tests
        ])
 ;;
