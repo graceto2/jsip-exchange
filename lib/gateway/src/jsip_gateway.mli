@@ -6,6 +6,8 @@
     (per-participant session feeds, per-symbol market data, audit firehose). *)
 
 module Event_protocol = Event_protocol
+module Participant_id = Participant_id
+module Participant_registry = Participant_registry
 module Rpc_protocol = Rpc_protocol
 module Session = Session
 module Dispatcher = Dispatcher
