@@ -301,3 +301,41 @@ let%expect_test "snapshot lists levels in price-time priority order" =
       BBO: $150.00 x100 / $150.05 x100
     |}]
 ;;
+
+let%expect_test "snapshot aggregates same-price orders into one level" =
+  let book = Order_book.create Harness.aapl in
+  (* Two bids rest at 150.00 (sizes 60 + 40) and two asks rest at 150.10
+     (sizes 30 + 70); each pair should collapse to a single level whose size
+     is the sum. A lone order at a different price on each side confirms
+     distinct prices stay separate. *)
+  Order_book.add
+    book
+    (make_order ~side:Buy ~price_cents:15000 ~order_id:1 ~size:60 ());
+  Order_book.add
+    book
+    (make_order ~side:Buy ~price_cents:14990 ~order_id:3 ~size:100 ());
+  Order_book.add
+    book
+    (make_order ~side:Buy ~price_cents:15000 ~order_id:2 ~size:40 ());
+  Order_book.add
+    book
+    (make_order ~side:Sell ~price_cents:15010 ~order_id:4 ~size:30 ());
+  Order_book.add
+    book
+    (make_order ~side:Sell ~price_cents:15010 ~order_id:5 ~size:70 ());
+  Order_book.add
+    book
+    (make_order ~side:Sell ~price_cents:15020 ~order_id:6 ~size:100 ());
+  print_endline (Order_book.snapshot book |> Book.to_string);
+  [%expect
+    {|
+    === AAPL ===
+      BIDS:
+        $150.00 x100
+        $149.90 x100
+      ASKS:
+        $150.10 x100
+        $150.20 x100
+      BBO: $150.00 x100 / $150.10 x100
+    |}]
+;;

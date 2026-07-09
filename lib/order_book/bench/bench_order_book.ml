@@ -69,6 +69,27 @@ let book_with_n_asks ?(min_price = 10_000) n =
   book, gen
 ;;
 
+let book_with_n_asks_at_same_price ~price_cents n =
+  let book = Order_book.create aapl in
+  let gen = Order_id.Generator.create () in
+  for _ = 1 to n do
+    let order =
+      Order.create
+        { client_order_id = 2
+        ; symbol = aapl
+        ; side = Sell
+        ; price = Price.of_int_cents price_cents
+        ; size = Size.of_int 100
+        ; time_in_force = Day
+        }
+        ~order_id:(Order_id.Generator.next gen)
+        ~participant:bob
+    in
+    Order_book.add book order
+  done;
+  book, gen
+;;
+
 (** Build a matching engine with [n] resting sells on AAPL. *)
 let engine_with_n_asks ?(min_price = 10_000) n =
   let engine = Matching_engine.create [ aapl ] in
@@ -137,6 +158,12 @@ let bench_best_bid_offer ~n =
   let book, _gen = book_with_n_asks n in
   Bench.Test.create ~name:[%string "best_bid_offer (n=%{n#Int})"] (fun () ->
     ignore (Order_book.best_bid_offer book : Bbo.t))
+;;
+
+let bench_snapshot ~n =
+  let book, _gen = book_with_n_asks_at_same_price ~price_cents:10000 n in
+  Bench.Test.create ~name:[%string "snapshot (n=%{n#Int})"] (fun () ->
+    ignore (Order_book.snapshot book : Book.t))
 ;;
 
 let bench_add_remove ~n =
@@ -291,6 +318,7 @@ let bench_find_match_alloc ~n =
 
 let () =
   let sizes = [ 10; 50; 100; 500 ] in
+  let snapshot_tests = List.map sizes ~f:(fun n -> bench_snapshot ~n) in
   let tests =
     List.concat
       [ (* Order book micro-benchmarks at various sizes *)
@@ -304,7 +332,13 @@ let () =
       ; List.map [ 10; 50; 100 ] ~f:(fun n -> bench_submit_sweep ~n)
       ; (* Allocation awareness *)
         [ bench_find_match_alloc ~n:100 ]
+      ; snapshot_tests
       ]
   in
-  Command_unix.run (Bench.make_command tests)
+  Command_unix.run
+    (Command.group
+       ~summary:"JSIP order-book benchmarks"
+       [ "existing", Bench.make_command tests
+       ; "snapshot", Bench.make_command snapshot_tests
+       ])
 ;;

@@ -141,29 +141,21 @@ let best_bid_offer t : Bbo.t =
   { bid = best_level t Buy; ask = best_level t Sell }
 ;;
 
-(* sort from most aggressive to least aggressive *)
+(* [Map.to_alist] already yields orders by ascending price (ties broken by
+   time priority). For asks, ascending price is already best-first; for bids,
+   reversed. *)
 let snapshot_side t (side : Side.t) =
-  let priority_order_book =
-    List.sort (side_list t side) ~compare:(fun this that ->
-      if Price.is_more_aggressive
-           side
-           ~price:(Order.price this)
-           ~than:(Order.price that)
-      then -1
-      else if Price.is_more_aggressive
-                side
-                ~price:(Order.price that)
-                ~than:(Order.price this)
-      then 1
-      else if Order_id.compare (Order.order_id this) (Order.order_id that)
-              < 0
-      then -1
-      else if Order_id.compare (Order.order_id this) (Order.order_id that)
-              = 0
-      then 0
-      else 1)
-  in
-  priority_order_book |> List.map ~f:Level.of_order
+  let best_first = side_list t side in
+  List.fold_right best_first ~init:[] ~f:(fun order levels ->
+    let price = Order.price order in
+    let size = Order.remaining_size order in
+    match levels with
+    | { Level.price = head_price; size = head_size } :: rest
+      when Price.equal price head_price ->
+      { price = head_price; size = Size.( + ) head_size size } :: rest
+    | _ ->
+      let level = { Level.price; size } in
+      level :: levels)
 ;;
 
 let snapshot t =
