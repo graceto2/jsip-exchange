@@ -28,6 +28,7 @@ type t =
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
   ; logged_in_participants : Hash_set.M(Participant_id).t
+      (* change to participant_id.hash.set *)
   ; stop : unit Ivar.t
   ; registry : Participant_registry.t
   (* Filled by [close] to stop the per-second stats sampler. *)

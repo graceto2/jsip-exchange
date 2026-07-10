@@ -18,18 +18,19 @@ let create () =
   }
 ;;
 
+(* add of_int to participant_id and generate in *)
 let intern t participant =
   match Hashtbl.find t.participant_to_id participant with
   | Some id -> id
   | None ->
     let id = Participant_id.Generator.next t.generator in
-    let int_of_id = Participant_id.to_int id in
-    if not (int_of_id = Queue.length t.id_to_participant)
+    let int_id = Participant_id.to_int id in
+    if not (int_id = Queue.length t.id_to_participant)
     then
       raise_s
         [%message
-          "id/queue length desync"
-            (int_of_id : int)
+          "id and queue length not in sync"
+            (int_id : int)
             ~len:(Queue.length t.id_to_participant : int)];
     (match Hashtbl.add t.participant_to_id ~key:participant ~data:id with
      | `Duplicate ->
