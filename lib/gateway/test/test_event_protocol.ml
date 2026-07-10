@@ -158,8 +158,7 @@ let%expect_test "format_event: all event types" =
                   }
             }
         }
-    ; Best_bid_offer_update
-        { symbol = Symbol_id.of_int 0; bbo = Bbo.empty }
+    ; Best_bid_offer_update { symbol = Symbol_id.of_int 0; bbo = Bbo.empty }
     ; Trade_report
         { symbol = Symbol_id.of_int 0
         ; price = Price.of_int_cents 15000

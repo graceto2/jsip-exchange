@@ -61,7 +61,8 @@ market-data feed.|}];
           in
           (match result with
            | None ->
-             print_endline [%string "No book available for %{symbol#Symbol_id}"]
+             print_endline
+               [%string "No book available for %{symbol#Symbol_id}"]
            | Some result -> print_endline (Book.to_string result));
           loop ()
         | Ok (Exchange_command.Subscribe symbol) ->

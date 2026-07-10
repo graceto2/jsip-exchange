@@ -2,9 +2,9 @@
 
     Owns subscription registries:
 
-    - **Market-data subscribers**, keyed by [Symbol_id.t]. Each subscriber gets
-      a pipe of [Best_bid_offer_update] and [Trade_report] events for the
-      symbol they asked about. This is the public market-data feed.
+    - **Market-data subscribers**, keyed by [Symbol_id.t]. Each subscriber
+      gets a pipe of [Best_bid_offer_update] and [Trade_report] events for
+      the symbol they asked about. This is the public market-data feed.
 
     - **Audit subscribers**, an unfiltered firehose of every event the
       matching engine produces. Intended for the exchange operator's monitor;

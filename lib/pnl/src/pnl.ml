@@ -70,7 +70,9 @@ type t =
 [@@deriving sexp_of]
 
 let empty =
-  { positions = Participant.Map.empty; reference_prices = Symbol_id.Map.empty }
+  { positions = Participant.Map.empty
+  ; reference_prices = Symbol_id.Map.empty
+  }
 ;;
 
 let update_position t ~participant ~symbol ~qty ~price_cents =

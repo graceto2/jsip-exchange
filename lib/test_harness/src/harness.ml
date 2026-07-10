@@ -19,8 +19,8 @@ type t = { engine : Matching_engine.t }
 
 let create ?(num_symbols = 3) () =
   (* Reset the shared client-order-id counter so each test's generated ids
-     start from 0, independent of the tests that ran before it. The default of
-     3 covers the [aapl]/[tsla]/[goog] ids (0/1/2). *)
+     start from 0, independent of the tests that ran before it. The default
+     of 3 covers the [aapl]/[tsla]/[goog] ids (0/1/2). *)
   Client_order_id.For_testing.reset ();
   { engine = Matching_engine.create num_symbols }
 ;;

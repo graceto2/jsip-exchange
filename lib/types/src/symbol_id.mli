@@ -1,9 +1,10 @@
 (** A compact integer id standing in for a {!Symbol.t}.
 
     Unlike a server-local id (e.g. {!Jsip_gateway.Participant_id}), a
-    [Symbol_id.t] is a {b public} identifier: clients submit orders and market
-    data requests against the id directly, and a directory (added later) will
-    publish the id-to-ticker mapping so participants know which id is which.
+    [Symbol_id.t] is a {b public} identifier: clients submit orders and
+    market data requests against the id directly, and a directory (added
+    later) will publish the id-to-ticker mapping so participants know which
+    id is which.
 
     This module is deliberately pure data — it carries an [int] and nothing
     more. It does not know how many symbols exist, so it {b cannot} validate

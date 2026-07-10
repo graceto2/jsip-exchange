@@ -37,8 +37,8 @@ let parse_buy_or_sell input_tokens ~side =
     in
     let%bind symbol =
       (* The client now submits the numeric symbol id directly, not a ticker.
-         Range-checking (is this a symbol we trade?) happens server-side; here
-         we only parse the integer. *)
+         Range-checking (is this a symbol we trade?) happens server-side;
+         here we only parse the integer. *)
       match Int.of_string_opt symbol_str with
       | Some n when n >= 0 -> Ok (Symbol_id.of_int n)
       | Some _ -> Error "symbol id must be non-negative"

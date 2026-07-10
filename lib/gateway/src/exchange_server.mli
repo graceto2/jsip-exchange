@@ -9,10 +9,10 @@ open! Async
 
 type t
 
-(** Start a server on the given port trading [num_symbols] instruments (symbol
-    ids [0 .. num_symbols - 1]). Returns the server handle and the port it is
-    actually listening on (useful when you pass port 0 to get an OS-assigned
-    port). *)
+(** Start a server on the given port trading [num_symbols] instruments
+    (symbol ids [0 .. num_symbols - 1]). Returns the server handle and the
+    port it is actually listening on (useful when you pass port 0 to get an
+    OS-assigned port). *)
 val start : num_symbols:int -> port:int -> unit -> t Deferred.t
 
 (** The port the server is listening on. *)

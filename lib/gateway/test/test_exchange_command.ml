@@ -143,7 +143,8 @@ let%expect_test "round-trip: parse a command, submit, format result" =
      in
      print_endline (Event_protocol.format_events events)
    | Book _ | Subscribe _ | Cancel _ -> print_endline "expected a Submit");
-  [%expect {|
+  [%expect
+    {|
     ACCEPTED id=1 0 SELL 100@$150.00 DAY
     BBO 0 bid=- ask=$150.00 x100
     ACCEPTED id=2 0 BUY 100@$150.00 DAY

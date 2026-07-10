@@ -25,7 +25,8 @@ module RCConfig : sig
     { participant : Participant.t (* participant name *)
     ; request_interval : int (* how many clock ticks between requests? *)
     ; report_interval : int (* how many clock ticks between reports? *)
-    ; symbols : Symbol_id.t list (* Which books are we tracking latency for? *)
+    ; symbols :
+        Symbol_id.t list (* Which books are we tracking latency for? *)
     ; book_query :
         Symbol_id.t
         -> Book.t option Deferred.t (* function to call the book_query_rpc *)

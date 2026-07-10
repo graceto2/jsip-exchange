@@ -125,10 +125,10 @@ let start ~num_symbols ~port () =
     Dispatcher.push_stats dispatcher (Metrics_collector.snapshot collector));
   let registry = Participant_registry.create () in
   (* Who is connected *right now*, keyed by their permanent
-     [Participant_id.t]. The id is already in hand from [intern] at login, and
-     int hashing beats string hashing. Deliberately separate from [registry]:
-     this set is pruned on disconnect (presence), whereas the registry never
-     forgets a name (identity). *)
+     [Participant_id.t]. The id is already in hand from [intern] at login,
+     and int hashing beats string hashing. Deliberately separate from
+     [registry]: this set is pruned on disconnect (presence), whereas the
+     registry never forgets a name (identity). *)
   let logged_in_participants = Hash_set.create (module Participant_id) in
   let implementations =
     Rpc.Implementations.create_exn
@@ -144,15 +144,13 @@ let start ~num_symbols ~port () =
                 Deferred.Or_error.error_s
                   [%message "already logged in" (existing : Participant.t)]
               | None ->
-                (* Resolve the name to its permanent id: a new name mints one,
-                   a reconnecting name gets the id it had before. *)
-                let id =
-                  Participant_registry.intern registry participant
-                in
+                (* Resolve the name to its permanent id: a new name mints
+                   one, a reconnecting name gets the id it had before. *)
+                let id = Participant_registry.intern registry participant in
                 if Hash_set.mem logged_in_participants id
                 then
-                  (* The id is present, so the name is already live on another
-                     connection — reject this second login. *)
+                  (* The id is present, so the name is already live on
+                     another connection — reject this second login. *)
                   Deferred.Or_error.error_s
                     [%message
                       "participant name already in use"

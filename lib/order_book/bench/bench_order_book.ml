@@ -177,10 +177,10 @@ let bench_snapshot ~n =
     ignore (Order_book.snapshot book : Book.t))
 ;;
 
-(* Pure symbol->book resolution. This is the lookup Exercise 2 optimizes: with
-   the [Symbol_id.Map] it is O(log n) string comparisons; with a hashtable +
-   array it becomes one hash plus an O(1) array index. We look up an existing
-   symbol so the cost is a real resolution, not an early [None]. *)
+(* Pure symbol->book resolution. This is the lookup Exercise 2 optimizes:
+   with the [Symbol_id.Map] it is O(log n) string comparisons; with a
+   hashtable + array it becomes one hash plus an O(1) array index. We look up
+   an existing symbol so the cost is a real resolution, not an early [None]. *)
 let bench_book_lookup ~n =
   let engine, probe = engine_with_n_symbols n in
   Bench.Test.create

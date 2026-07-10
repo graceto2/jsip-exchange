@@ -182,9 +182,7 @@ let%expect_test "IOC: does not rest on book" =
 
 let%expect_test "rejected: unknown symbol" =
   let t = Harness.create () in
-  submit_
-    t
-    (Harness.buy ~price_cents:15000 ~symbol:(Symbol_id.of_int 99) ());
+  submit_ t (Harness.buy ~price_cents:15000 ~symbol:(Symbol_id.of_int 99) ());
   [%expect {| REJECTED 99 BUY 100@$150.00 reason=unknown symbol |}]
 ;;
 

@@ -65,7 +65,8 @@ let to_participant_view fill p =
   | Some Side.Buy ->
     Some
       [%string
-        "You bought size=%{size#Size} symbol=%{symbol#Symbol_id} at $%{price}"]
+        "You bought size=%{size#Size} symbol=%{symbol#Symbol_id} at \
+         $%{price}"]
   | Some Sell ->
     Some
       [%string
