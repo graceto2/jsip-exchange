@@ -16,7 +16,7 @@ open Jsip_types
 module Config : sig
   type t =
     { participant : Participant.t
-    ; symbol : Symbol.t
+    ; symbol : Symbol_id.t
     ; fair_value_cents : int
     (** The market maker's estimate of the true price, in cents. *)
     ; half_spread_cents : int
@@ -25,13 +25,13 @@ module Config : sig
     ; size_per_level : int (** Number of shares at each price level. *)
     ; num_levels : int
     ; fill_client_oid : int ref
-        (* ; mutable inventory : int Symbol.Map.t (** An inventory counter
+        (* ; mutable inventory : int Symbol_id.Map.t (** An inventory counter
            per symbol. Updated upon Fill events involving this market
            maker. *) ; mutable currently_resting_orders :
            Client_order_id.Set.t *)
     (** Number of price levels on each side. The bot places orders at
         [fair_value +/- spread], [fair_value +/- (spread + tick)], etc. *)
-    ; mutable inventory : int Symbol.Map.t
+    ; mutable inventory : int Symbol_id.Map.t
     ; mutable currently_resting_orders : Size.t Client_order_id.Map.t
     }
   [@@deriving sexp_of]

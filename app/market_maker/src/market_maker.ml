@@ -6,7 +6,7 @@ open Jsip_gateway
 module Config = struct
   type t =
     { participant : Participant.t
-    ; symbol : Symbol.t
+    ; symbol : Symbol_id.t
     ; fair_value_cents : int
     ; half_spread_cents : int
     ; size_per_level : int
@@ -17,7 +17,7 @@ module Config = struct
            fields are live per-run state. Consider splitting them into a
            separate [State.t] so the config stays immutable and the running
            state is clearly distinguished. *)
-    ; mutable inventory : int Symbol.Map.t
+    ; mutable inventory : int Symbol_id.Map.t
         (* How much of each symbol we have successfully bought/sold. Should
            this be of Size.t? *)
     ; mutable currently_resting_orders : Size.t Client_order_id.Map.t

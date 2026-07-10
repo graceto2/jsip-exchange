@@ -2,7 +2,7 @@ open! Core
 
 type t =
   { fill_id : int
-  ; symbol : Symbol.t
+  ; symbol : Symbol_id.t
   ; price : Price.t
   ; size : Size.t
   ; aggressor_order_id : Order_id.t
@@ -36,7 +36,7 @@ let to_string
     fill_id
     (Client_order_id.to_string aggressor_client_order_id)
     (Client_order_id.to_string resting_client_order_id)
-    (Symbol.to_string symbol)
+    (Symbol_id.to_string symbol)
     (Price.to_string_dollar price)
     (Size.to_int size)
     (Order_id.to_string aggressor_order_id)
@@ -65,11 +65,11 @@ let to_participant_view fill p =
   | Some Side.Buy ->
     Some
       [%string
-        "You bought size=%{size#Size} symbol=%{symbol#Symbol} at $%{price}"]
+        "You bought size=%{size#Size} symbol=%{symbol#Symbol_id} at $%{price}"]
   | Some Sell ->
     Some
       [%string
-        "You sold size=%{size#Size} symbol=%{symbol#Symbol} at $%{price}"]
+        "You sold size=%{size#Size} symbol=%{symbol#Symbol_id} at $%{price}"]
   | None -> None
 ;;
 

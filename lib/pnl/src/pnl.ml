@@ -64,19 +64,19 @@ module Position = struct
 end
 
 type t =
-  { positions : Position.t Symbol.Map.t Participant.Map.t
-  ; reference_prices : Price.t Symbol.Map.t
+  { positions : Position.t Symbol_id.Map.t Participant.Map.t
+  ; reference_prices : Price.t Symbol_id.Map.t
   }
 [@@deriving sexp_of]
 
 let empty =
-  { positions = Participant.Map.empty; reference_prices = Symbol.Map.empty }
+  { positions = Participant.Map.empty; reference_prices = Symbol_id.Map.empty }
 ;;
 
 let update_position t ~participant ~symbol ~qty ~price_cents =
   let by_symbol =
     Map.find t.positions participant
-    |> Option.value ~default:Symbol.Map.empty
+    |> Option.value ~default:Symbol_id.Map.empty
   in
   let position =
     Map.find by_symbol symbol |> Option.value ~default:Position.empty
@@ -118,7 +118,7 @@ let apply_trade_report t (trade_report : Trade_report.t) =
 
 module Position_summary = struct
   type t =
-    { symbol : Symbol.t
+    { symbol : Symbol_id.t
     ; inventory : int
     ; average_entry_price : Price.t option
     ; reference_price : Price.t option
@@ -162,7 +162,7 @@ let position_summary ~symbol ~reference_price (position : Position.t) =
 let summary t participant =
   let by_symbol =
     Map.find t.positions participant
-    |> Option.value ~default:Symbol.Map.empty
+    |> Option.value ~default:Symbol_id.Map.empty
   in
   let per_symbol =
     Map.to_alist by_symbol

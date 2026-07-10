@@ -14,8 +14,8 @@ end
 type t =
   | Submit of Order.Request.t
   | Cancel of Client_order_id.t
-  | Book of Symbol.t
-  | Subscribe of Symbol.t
+  | Book of Symbol_id.t
+  | Subscribe of Symbol_id.t
 
 (* No "as <name>" should be specified in the command, since we require participants to log in before submitting orders. *)
 
@@ -36,11 +36,13 @@ let parse_buy_or_sell input_tokens ~side =
         Error [%string "invalid price: %{price_str}\nexception: %{exn_str}"]
     in
     let%bind symbol =
-      try Ok (Symbol.of_string symbol_str) with
-      | exn ->
-        let exn_str = Exn.to_string exn in
-        Error
-          [%string "invalid symbol: %{symbol_str}\nexception: %{exn_str}"]
+      (* The client now submits the numeric symbol id directly, not a ticker.
+         Range-checking (is this a symbol we trade?) happens server-side; here
+         we only parse the integer. *)
+      match Int.of_string_opt symbol_str with
+      | Some n when n >= 0 -> Ok (Symbol_id.of_int n)
+      | Some _ -> Error "symbol id must be non-negative"
+      | None -> Error [%string "invalid symbol id: %{symbol_str}"]
     in
     let%bind time_in_force, rest =
       match rest with
@@ -67,7 +69,8 @@ let parse_buy_or_sell input_tokens ~side =
           }
           : Order.Request.t))
   | _ ->
-    Error "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]"
+    Error
+      "expected: BUY|SELL <client_id> <symbol_id> <size> <price> [DAY|IOC]"
 ;;
 
 let parse_buy_or_sell_exn list ~side =
@@ -88,11 +91,11 @@ let parse_exn string =
      | Sell -> parse_buy_or_sell_exn rest ~side:Side.Sell
      | Book ->
        (match rest with
-        | symbol :: [] -> Book (Symbol.of_string symbol)
+        | symbol :: [] -> Book (Symbol_id.of_int (Int.of_string symbol))
         | _ -> failwith "failed book, too many entries")
      | Subscribe ->
        (match rest with
-        | symbol :: [] -> Subscribe (Symbol.of_string symbol)
+        | symbol :: [] -> Subscribe (Symbol_id.of_int (Int.of_string symbol))
         | _ -> failwith "failed subscribe, too many entries"))
 ;;
 

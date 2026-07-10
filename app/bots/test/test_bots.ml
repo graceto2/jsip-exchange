@@ -7,8 +7,8 @@ open Jsip_fundamental
 open Jsip_bot_runtime
 open! Jsip_bots
 
-let aapl = Symbol.of_string "AAPL"
-let msft = Symbol.of_string "MSFT"
+let aapl = Symbol_id.of_int 0
+let msft = Symbol_id.of_int 3
 let alice = Participant.of_string "Alice"
 
 (* A flat, deterministic oracle: every symbol sits at [initial_price_cents]
@@ -16,7 +16,7 @@ let alice = Participant.of_string "Alice"
    [on_tick] by hand and never advance the oracle, the fundamental stays put,
    so every order's resting price is a fixed function of the config. *)
 let oracle_config ~symbols ~initial_price_cents =
-  Symbol.Map.of_alist_exn
+  Symbol_id.Map.of_alist_exn
     (List.map symbols ~f:(fun symbol ->
        ( symbol
        , { Fundamental_oracle.Config.initial_price_cents
@@ -70,7 +70,7 @@ let print_submitted (submitted : Order.Request.t list ref) =
   let recent = List.rev !submitted in
   List.iter recent ~f:(fun req ->
     printf
-      !"%{Side} %{Symbol} %d@%{Price#dollar} %{Time_in_force}\n"
+      !"%{Side} %{Symbol_id} %d@%{Price#dollar} %{Time_in_force}\n"
       req.side
       req.symbol
       (Size.to_int req.size)
@@ -196,14 +196,14 @@ let%expect_test "book filler piles resting, non-marketable Day orders" =
   print_submitted submitted;
   [%expect
     {|
-    BUY AAPL 10@$149.50 DAY
-    SELL AAPL 10@$150.50 DAY
-    BUY AAPL 10@$149.50 DAY
-    SELL AAPL 10@$150.50 DAY
-    BUY AAPL 10@$149.50 DAY
-    SELL AAPL 10@$150.50 DAY
-    BUY AAPL 10@$149.50 DAY
-    SELL AAPL 10@$150.50 DAY
+    BUY 0 10@$149.50 DAY
+    SELL 0 10@$150.50 DAY
+    BUY 0 10@$149.50 DAY
+    SELL 0 10@$150.50 DAY
+    BUY 0 10@$149.50 DAY
+    SELL 0 10@$150.50 DAY
+    BUY 0 10@$149.50 DAY
+    SELL 0 10@$150.50 DAY
     |}];
   (* Every order must carry a fresh client_order_id, so none is rejected as a
      duplicate. Two ticks of 4 orders => 8 orders, 8 distinct ids. *)
@@ -278,7 +278,7 @@ let print_per_tick ~tick ~sent_this_tick =
 let print_orders_with_ids (submitted : Order.Request.t list ref) =
   List.iter (List.rev !submitted) ~f:(fun (req : Order.Request.t) ->
     printf
-      !"%{Symbol} %{Side} %d@%{Price#dollar} coid=%{Client_order_id}\n"
+      !"%{Symbol_id} %{Side} %d@%{Price#dollar} coid=%{Client_order_id}\n"
       req.symbol
       req.side
       (Size.to_int req.size)
@@ -302,10 +302,11 @@ let%expect_test "a burst targets every configured symbol with fresh ids" =
      fundamental at $149.50; every id is distinct. *)
   [%expect
     {|
-    AAPL BUY 10@$149.50 coid=0
-    AAPL BUY 10@$149.50 coid=1
-    MSFT BUY 10@$149.50 coid=2
-    MSFT BUY 10@$149.50 coid=3|}];
+    0 BUY 10@$149.50 coid=0
+    0 BUY 10@$149.50 coid=1
+    3 BUY 10@$149.50 coid=2
+    3 BUY 10@$149.50 coid=3
+    |}];
   return ()
 ;;
 
@@ -319,7 +320,7 @@ let print_storm_activity
   =
   List.iter (List.rev !submitted) ~f:(fun (req : Order.Request.t) ->
     printf
-      !"submit %{Client_order_id}: %{Side} %{Symbol} %d@%{Price#dollar}\n"
+      !"submit %{Client_order_id}: %{Side} %{Symbol_id} %d@%{Price#dollar}\n"
       req.client_order_id
       req.side
       req.symbol
@@ -351,8 +352,8 @@ let%expect_test "cancel storm: fresh submit/cancel pairs every tick" =
   print_storm_activity ~submitted ~cancelled;
   [%expect
     {|
-    submit 0: BUY AAPL 1@$149.50
-    submit 1: BUY AAPL 1@$149.50
+    submit 0: BUY 0 1@$149.50
+    submit 1: BUY 0 1@$149.50
     cancel 0
     cancel 1
     |}];
@@ -362,10 +363,10 @@ let%expect_test "cancel storm: fresh submit/cancel pairs every tick" =
   print_storm_activity ~submitted ~cancelled;
   [%expect
     {|
-    submit 0: BUY AAPL 1@$149.50
-    submit 1: BUY AAPL 1@$149.50
-    submit 2: BUY AAPL 1@$149.50
-    submit 3: BUY AAPL 1@$149.50
+    submit 0: BUY 0 1@$149.50
+    submit 1: BUY 0 1@$149.50
+    submit 2: BUY 0 1@$149.50
+    submit 3: BUY 0 1@$149.50
     cancel 0
     cancel 1
     cancel 2
@@ -387,10 +388,10 @@ let%expect_test "cancel storm: sell side prices above the fundamental" =
   print_storm_activity ~submitted ~cancelled;
   [%expect
     {|
-    submit 0: SELL AAPL 1@$150.50
-    submit 1: SELL AAPL 1@$150.50
-    submit 2: SELL AAPL 1@$150.50
-    submit 3: SELL AAPL 1@$150.50
+    submit 0: SELL 0 1@$150.50
+    submit 1: SELL 0 1@$150.50
+    submit 2: SELL 0 1@$150.50
+    submit 3: SELL 0 1@$150.50
     cancel 0
     cancel 1
     cancel 2
@@ -416,7 +417,7 @@ let%expect_test "cancel storm: sell side prices above the fundamental" =
 
 module Rc = Resource_canary_bot
 
-let msft = Symbol.of_string "MSFT"
+let msft = Symbol_id.of_int 3
 
 (* The canary ignores the context, so any runnable bot's context will do. *)
 let make_context () =
@@ -433,7 +434,7 @@ let run
   ~symbols
   ~request_interval
   ~report_interval
-  ?(book_query = fun (_ : Symbol.t) -> return None)
+  ?(book_query = fun (_ : Symbol_id.t) -> return None)
   ?(seed = [])
   ~ticks
   ()
@@ -446,7 +447,7 @@ let run
     ; report_interval
     ; symbols
     ; book_query
-    ; latency_data = Symbol.Table.create ()
+    ; latency_data = Symbol_id.Table.create ()
     ; ticks_since_start = 0
     }
   in
@@ -468,7 +469,7 @@ let print_sample_counts (config : Rc.RCConfig.t) : unit =
       Hashtbl.find_exn config.latency_data symbol
       |> Rc.For_testing.num_samples
     in
-    print_endline [%string "%{symbol#Symbol}: %{data_length#Int} samples"])
+    print_endline [%string "%{symbol#Symbol_id}: %{data_length#Int} samples"])
 ;;
 
 let%expect_test "requests are recorded every request_interval ticks, per \
@@ -495,14 +496,14 @@ let%expect_test "requests are recorded every request_interval ticks, per \
   [%expect
     {|
     request_interval=1, ticks=6:
-    AAPL: 6 samples
-    MSFT: 6 samples
+    0: 6 samples
+    3: 6 samples
     request_interval=2, ticks=6:
-    AAPL: 3 samples
-    MSFT: 3 samples
+    0: 3 samples
+    3: 3 samples
     request_interval=3, ticks=7:
-    AAPL: 2 samples
-    MSFT: 2 samples
+    0: 2 samples
+    3: 2 samples
     |}];
   return ()
 ;;
@@ -572,10 +573,10 @@ let%expect_test "report prints seeded latency stats once per report_interval"
   [%expect
     {|
     RESOURCE CANARY REPORT
-    (AAPL) most_recent_latency_ms: 40.ms avg_latency_ms: 25.ms last_3_avg_latency_ms: 30.ms
+    (0) most_recent_latency_ms: 40.ms avg_latency_ms: 25.ms last_3_avg_latency_ms: 30.ms
 
     RESOURCE CANARY REPORT
-    (AAPL) most_recent_latency_ms: 40.ms avg_latency_ms: 25.ms last_3_avg_latency_ms: 30.ms
+    (0) most_recent_latency_ms: 40.ms avg_latency_ms: 25.ms last_3_avg_latency_ms: 30.ms
     |}];
   return ()
 ;;

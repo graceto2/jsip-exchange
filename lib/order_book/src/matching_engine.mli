@@ -10,9 +10,9 @@ open Jsip_types
 
 type t [@@deriving sexp_of]
 
-(** Create a matching engine for the given symbols. Each symbol gets its own
-    order book. *)
-val create : Symbol.t list -> t
+(** Create a matching engine trading [num_symbols] instruments, with symbol
+    ids [0 .. num_symbols - 1]. Each id gets its own order book. *)
+val create : int -> t
 
 (** {2 Order submission} *)
 
@@ -36,8 +36,8 @@ val cancel
 
 (** {2 Queries} *)
 
-(** The order book for a given symbol, or [None] if the symbol is not traded
-    on this engine. *)
-val book : t -> Symbol.t -> Order_book.t option
+(** The order book for a given symbol id, or [None] if the id is out of range
+    (not a symbol this engine trades). *)
+val book : t -> Symbol_id.t -> Order_book.t option
 
 (* val end_of_day : t -> Exchange_event.t list *)

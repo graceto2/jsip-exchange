@@ -5,9 +5,9 @@ open Jsip_gateway
 
 (* --- Constants --- *)
 
-let aapl = Symbol.of_string "AAPL"
-let tsla = Symbol.of_string "TSLA"
-let goog = Symbol.of_string "GOOG"
+let aapl = Symbol_id.of_int 0
+let tsla = Symbol_id.of_int 1
+let goog = Symbol_id.of_int 2
 let alice = Participant.of_string "Alice"
 let bob = Participant.of_string "Bob"
 let charlie = Participant.of_string "Charlie"
@@ -17,11 +17,12 @@ let market_maker = Participant.of_string "MarketMaker"
 
 type t = { engine : Matching_engine.t }
 
-let create ?(symbols = [ aapl; tsla; goog ]) () =
+let create ?(num_symbols = 3) () =
   (* Reset the shared client-order-id counter so each test's generated ids
-     start from 0, independent of the tests that ran before it. *)
+     start from 0, independent of the tests that ran before it. The default of
+     3 covers the [aapl]/[tsla]/[goog] ids (0/1/2). *)
   Client_order_id.For_testing.reset ();
-  { engine = Matching_engine.create symbols }
+  { engine = Matching_engine.create num_symbols }
 ;;
 
 let engine t = t.engine
@@ -34,7 +35,7 @@ module Order_request = struct
      attaches it from the authenticated session — so the harness pairs them
      here to keep the ergonomic [submit t (buy ...)] one-liner. *)
   type t =
-    { symbol : Symbol.t
+    { symbol : Symbol_id.t
     ; participant : Participant.t
     ; side : Side.t
     ; price : Price.t
@@ -218,14 +219,14 @@ let submit_quiet_ t request =
 
 let print_book t symbol =
   match Matching_engine.book t.engine symbol with
-  | None -> print_endline [%string "unknown symbol %{symbol#Symbol}"]
+  | None -> print_endline [%string "unknown symbol %{symbol#Symbol_id}"]
   | Some book -> Order_book.snapshot book |> Book.to_string |> print_endline
 ;;
 
 let print_bbo t symbol =
   match Matching_engine.book t.engine symbol with
-  | None -> print_endline [%string "BBO %{symbol#Symbol}: unknown symbol"]
+  | None -> print_endline [%string "BBO %{symbol#Symbol_id}: unknown symbol"]
   | Some book ->
     let bbo = Order_book.best_bid_offer book |> Bbo.to_string in
-    print_endline [%string "BBO %{symbol#Symbol}: %{bbo}"]
+    print_endline [%string "BBO %{symbol#Symbol_id}: %{bbo}"]
 ;;

@@ -10,15 +10,15 @@
 
     Each command is a single line of text:
     {v
-    BUY  <client_id> <symbol> <size> <price> [<time_in_force>]
-    SELL <client_id> <symbol> <size> <price> [<time_in_force>]
+    BUY  <client_id> <symbol_id> <size> <price> [<time_in_force>]
+    SELL <client_id> <symbol_id> <size> <price> [<time_in_force>]
     v}
 
     Examples:
     {v
-    BUY 0 AAPL 100 150.25
-    SELL 1 TSLA 50 200.00 IOC
-    BUY 2 AAPL 100 150.00 DAY
+    BUY 0 0 100 150.25
+    SELL 1 1 50 200.00 IOC
+    BUY 2 0 100 150.00 DAY
     v}
 
     Time-in-force defaults to DAY if omitted. Identity is not part of a
@@ -31,8 +31,8 @@ open! Jsip_types
 type t =
   | Submit of Order.Request.t
   | Cancel of Client_order_id.t
-  | Book of Symbol.t
-  | Subscribe of Symbol.t
+  | Book of Symbol_id.t
+  | Subscribe of Symbol_id.t
 
 (** Parse a text command into a {!t}. Returns [Error] with a human-readable
     message if the input is malformed. Identity is not part of a command —

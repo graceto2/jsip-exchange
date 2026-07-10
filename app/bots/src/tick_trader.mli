@@ -14,7 +14,7 @@ module Context = Jsip_bot_runtime.Bot_runtime.Context
 
 module Config : sig
   type t =
-    { symbol : Symbol.t (** The symbol to trade. *)
+    { symbol : Symbol_id.t (** The symbol to trade. *)
     ; order_size : int
     ; price_jitter_cents : int
     (** Each order is priced at [fundamental +/- U(0, price_jitter_cents)].

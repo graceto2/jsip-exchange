@@ -5,7 +5,7 @@ module Context = Jsip_bot_runtime.Bot_runtime.Context
 
 module Config = struct
   type t =
-    { symbol : Symbol.t (* ----Need a market maker for each symbol *)
+    { symbol : Symbol_id.t (* ----Need a market maker for each symbol *)
     ; fair_value_cents : int
     ; half_spread_cents : int
     ; size_per_level : int
@@ -13,7 +13,7 @@ module Config = struct
     ; fill_client_oid : int ref
         (* ----Don't need because we manually compute based on which position
            on the ladder we are posting *)
-    ; mutable inventory : int Symbol.Map.t
+    ; mutable inventory : int Symbol_id.Map.t
     ; mutable currently_resting_orders : Size.t Client_order_id.Map.t
     }
   [@@deriving sexp_of]

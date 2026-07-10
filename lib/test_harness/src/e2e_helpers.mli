@@ -8,7 +8,7 @@ open Jsip_gateway
 
 (** Start a server on an OS-assigned port, run [f], then shut down. *)
 val with_server
-  :  symbols:Symbol.t list
+  :  num_symbols:int
   -> (server:Exchange_server.t -> port:int -> 'a Deferred.t)
   -> 'a Deferred.t
 
@@ -35,6 +35,6 @@ val connection : client -> Rpc.Connection.t
 val rpc_submit : client -> Harness.Order_request.t -> unit Deferred.t
 
 (** Query the book via RPC. *)
-val rpc_book : client -> Symbol.t -> Book.t option Deferred.t
+val rpc_book : client -> Symbol_id.t -> Book.t option Deferred.t
 
 val rpc_cancel : client -> Client_order_id.t -> unit Deferred.t

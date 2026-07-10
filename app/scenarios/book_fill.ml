@@ -12,7 +12,7 @@ let description =
 ;;
 
 (* Two symbols so the filler's round-robin is exercised. *)
-let symbols = [ Symbol.of_string "AAPL"; Symbol.of_string "MSFT" ]
+let symbols = [ Symbol_id.of_int 0; Symbol_id.of_int 1 ]
 
 (* Intensity knobs. Three fillers each firing 50 orders every 200ms is ~750
    resting orders/sec, enough for memory growth to show within 30s. *)
@@ -31,7 +31,7 @@ let oracle_config : Fundamental_oracle.Config.t =
       ; mean_reversion_strength = 0.
       ; tick_interval = Time_ns.Span.of_sec 1.
       } ))
-  |> Symbol.Map.of_alist_exn
+  |> Symbol_id.Map.of_alist_exn
 ;;
 
 let filler_spec index : Bot_spec.t =

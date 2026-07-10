@@ -15,13 +15,13 @@ let description =
   "Pathological submit/cancel storm on one quiet symbol, no other traffic."
 ;;
 
-let symbol = Symbol.of_string "STRM"
+let symbol = Symbol_id.of_int 0
 
 (* Near-flat fundamental: the storm prices off the oracle, and a calm oracle
    keeps its passive orders from drifting into the spread and filling before
    they can be cancelled. *)
 let oracle_config : Jsip_fundamental.Fundamental_oracle.Config.t =
-  Symbol.Map.of_alist_exn
+  Symbol_id.Map.of_alist_exn
     [ ( symbol
       , { Jsip_fundamental.Fundamental_oracle.Config.initial_price_cents =
             10_000

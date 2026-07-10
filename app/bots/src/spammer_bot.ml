@@ -6,7 +6,7 @@ open Jsip_types
 module SpammerConfig = struct
   type t =
     { participant : Participant.t
-    ; symbols : Symbol.t list
+    ; symbols : Symbol_id.t list
     ; side : Side.t
     ; burst_interval : int
     ; burst_size : int

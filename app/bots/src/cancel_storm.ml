@@ -32,7 +32,7 @@ open Jsip_bot_runtime
 
 module Config = struct
   type t =
-    { symbol : Symbol.t
+    { symbol : Symbol_id.t
     ; size : Size.t
     ; side : Side.t
     (** Side to submit on. Launch two instances (one [Buy], one [Sell]) for a

@@ -55,12 +55,12 @@ let%expect_test "open a position, mark it, then partially close it" =
     {|
     ((participant Alice)
      ((per_symbol
-       (((symbol AAPL) (inventory 100) (average_entry_price (15000))
+       (((symbol 0) (inventory 100) (average_entry_price (15000))
          (reference_price (15200)) (realized_cents 0) (unrealized_cents 20000))))
       (total_realized_cents 0) (total_unrealized_cents 20000)))
     ((participant Bob)
      ((per_symbol
-       (((symbol AAPL) (inventory -100) (average_entry_price (15000))
+       (((symbol 0) (inventory -100) (average_entry_price (15000))
          (reference_price (15200)) (realized_cents 0) (unrealized_cents -20000))))
       (total_realized_cents 0) (total_unrealized_cents -20000)))
     |}];
@@ -80,13 +80,13 @@ let%expect_test "open a position, mark it, then partially close it" =
     {|
     ((participant Alice)
      ((per_symbol
-       (((symbol AAPL) (inventory 40) (average_entry_price (15000))
+       (((symbol 0) (inventory 40) (average_entry_price (15000))
          (reference_price (15200)) (realized_cents 18000)
          (unrealized_cents 8000))))
       (total_realized_cents 18000) (total_unrealized_cents 8000)))
     ((participant Bob)
      ((per_symbol
-       (((symbol AAPL) (inventory -40) (average_entry_price (15000))
+       (((symbol 0) (inventory -40) (average_entry_price (15000))
          (reference_price (15200)) (realized_cents -18000)
          (unrealized_cents -8000))))
       (total_realized_cents -18000) (total_unrealized_cents -8000)))
@@ -120,7 +120,7 @@ let%expect_test "selling through zero flips a long into a short" =
     {|
     ((participant Charlie)
      ((per_symbol
-       (((symbol AAPL) (inventory -60) (average_entry_price (16000))
+       (((symbol 0) (inventory -60) (average_entry_price (16000))
          (reference_price (15500)) (realized_cents 40000)
          (unrealized_cents 30000))))
       (total_realized_cents 40000) (total_unrealized_cents 30000)))

@@ -3,8 +3,8 @@ open! Async
 open Jsip_gateway
 open Jsip_types
 
-let with_server ~symbols f =
-  let%bind server = Exchange_server.start ~symbols ~port:0 () in
+let with_server ~num_symbols f =
+  let%bind server = Exchange_server.start ~num_symbols ~port:0 () in
   let port = Exchange_server.port server in
   Monitor.protect
     (fun () -> f ~server ~port)

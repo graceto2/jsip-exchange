@@ -13,13 +13,10 @@ open Jsip_types
 open Jsip_gateway
 open Jsip_market_maker
 
-let default_symbols =
-  [ Symbol.of_string "AAPL"
-  ; Symbol.of_string "TSLA"
-  ; Symbol.of_string "GOOG"
-  ; Symbol.of_string "MSFT"
-  ]
-;;
+(* Symbol ids [0 .. num_symbols - 1] are traded. The human tickers they stand
+   for (AAPL, TSLA, ...) will come from a directory later; for now the server
+   just decides how many instruments exist. *)
+let num_symbols = 4
 
 let connect_as ~where_to_connect participant =
   (* TODO: once login_rpc exists (week 2, exercise 1), dispatch it here so
@@ -30,7 +27,7 @@ let connect_as ~where_to_connect participant =
 ;;
 
 let seed_market_maker ~where_to_connect =
-  let aapl = Symbol.of_string "AAPL" in
+  let aapl = Symbol_id.of_int 0 in
   let mm_participant = Participant.of_string "MarketMaker" in
   let config : Market_maker.Config.t =
     { participant = mm_participant
@@ -40,7 +37,7 @@ let seed_market_maker ~where_to_connect =
     ; size_per_level = 100
     ; num_levels = 5
     ; fill_client_oid = ref 0
-    ; inventory = Map.empty (module Symbol)
+    ; inventory = Map.empty (module Symbol_id)
     ; currently_resting_orders = Map.empty (module Client_order_id)
     }
   in
@@ -59,9 +56,9 @@ let seed_market_maker ~where_to_connect =
 let trade_back_and_forth ~where_to_connect =
   (* One pair of MMs per symbol, anchored at a representative fair value. *)
   let symbol_anchors =
-    [ Symbol.of_string "AAPL", 15000
-    ; Symbol.of_string "TSLA", 25000
-    ; Symbol.of_string "GOOG", 28000
+    [ Symbol_id.of_int 0, 15000
+    ; Symbol_id.of_int 1, 25000
+    ; Symbol_id.of_int 2, 28000
     ]
   in
   (* MM_Low's fair value sits [low_offset_cents] below the anchor and
@@ -79,7 +76,7 @@ let trade_back_and_forth ~where_to_connect =
     ; size_per_level = 25
     ; num_levels = 3
     ; fill_client_oid = ref 0
-    ; inventory = Map.empty (module Symbol)
+    ; inventory = Map.empty (module Symbol_id)
     ; currently_resting_orders = Map.empty (module Client_order_id)
     }
   in
@@ -113,7 +110,7 @@ let trade_back_and_forth ~where_to_connect =
 
 let start ~port ~market_maker_behavior =
   let%bind server =
-    Exchange_server.start ~symbols:default_symbols ~port ()
+    Exchange_server.start ~num_symbols ~port ()
   in
   let where_to_connect =
     Tcp.Where_to_connect.of_host_and_port { host = "localhost"; port }
@@ -140,9 +137,11 @@ let start ~port ~market_maker_behavior =
       "JSIP Exchange server listening on port %{Exchange_server.port \
        server#Int}"];
   let symbols =
-    List.map default_symbols ~f:Symbol.to_string |> String.concat ~sep:", "
+    List.init num_symbols ~f:(fun i ->
+      Symbol_id.to_string (Symbol_id.of_int i))
+    |> String.concat ~sep:", "
   in
-  print_endline [%string "Trading: %{symbols}"];
+  print_endline [%string "Trading symbol ids: %{symbols}"];
   Exchange_server.close_finished server
 ;;
 

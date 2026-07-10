@@ -12,7 +12,7 @@ let description =
 ;;
 
 (* The single book both spammers target. *)
-let symbol = Symbol.of_string "AAPL"
+let symbol = Symbol_id.of_int 0
 let buy_spammer = Participant.of_string "SpammerBuy"
 let sell_spammer = Participant.of_string "SpammerSell"
 
@@ -27,7 +27,7 @@ let order_size = 10
 let tick_interval = Time_ns.Span.of_sec 0.5
 
 let oracle_config : Fundamental_oracle.Config.t =
-  Symbol.Map.of_alist_exn
+  Symbol_id.Map.of_alist_exn
     [ ( symbol
       , { Fundamental_oracle.Config.initial_price_cents = 15000
         ; volatility_cents_per_sec = 5.0

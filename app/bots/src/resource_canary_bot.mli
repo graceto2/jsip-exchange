@@ -25,11 +25,11 @@ module RCConfig : sig
     { participant : Participant.t (* participant name *)
     ; request_interval : int (* how many clock ticks between requests? *)
     ; report_interval : int (* how many clock ticks between reports? *)
-    ; symbols : Symbol.t list (* Which books are we tracking latency for? *)
+    ; symbols : Symbol_id.t list (* Which books are we tracking latency for? *)
     ; book_query :
-        Symbol.t
+        Symbol_id.t
         -> Book.t option Deferred.t (* function to call the book_query_rpc *)
-    ; latency_data : Per_symbol_data.t Symbol.Table.t
+    ; latency_data : Per_symbol_data.t Symbol_id.Table.t
         (* per-symbol latency bookkeeping, keyed by symbol *)
     ; mutable ticks_since_start : int (* ticks since the bot was started *)
     }

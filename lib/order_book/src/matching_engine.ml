@@ -1,11 +1,11 @@
 open! Core
 open Jsip_types
 
-(* [symbol_to_id] maps each traded symbol to its index in [books]; should not
-   be changed after initializing in create. Makes symbol lookup fast O(1). *)
+(* [books] is a dense array indexed by [Symbol_id.t]: the k-th book is symbol
+   id [k]. There is no separate symbol->id map — the id *is* the index — so
+   resolving a book is a bounds check plus an array read (see [find_book]). *)
 type t =
-  { symbol_to_id : int Symbol.Table.t
-  ; books : Order_book.t array
+  { books : Order_book.t array
   ; order_id_gen : Order_id.Generator.t
   ; mutable next_fill_id : int
   ; client_order_ids : Order.t Client_order_id.Table.t
@@ -13,16 +13,13 @@ type t =
   }
 [@@deriving sexp_of]
 
-let create symbols =
-  let symbol_to_id = Symbol.Table.create () in
-  let books =
-    List.mapi symbols ~f:(fun idx symbol ->
-      Hashtbl.add_exn symbol_to_id ~key:symbol ~data:idx;
-      Order_book.create symbol)
-    |> Array.of_list
-  in
-  { symbol_to_id
-  ; books
+(* Create [num_symbols] books, one per symbol id [0 .. num_symbols - 1].
+   Taking a count (rather than a list of ids) keeps the array dense and in
+   order, which is exactly what lets [find_book] treat the id as an index. *)
+let create num_symbols =
+  { books =
+      Array.init num_symbols ~f:(fun i ->
+        Order_book.create (Symbol_id.of_int i))
   ; order_id_gen = Order_id.Generator.create ()
   ; next_fill_id = 1
   ; client_order_ids = Client_order_id.Table.create ()
@@ -30,15 +27,16 @@ let create symbols =
   }
 ;;
 
-(* Resolve a symbol to its book: hash to an id, then index the array. Returns
-   [None] for a symbol this engine does not trade. *)
-let find_book t symbol =
-  match Hashtbl.find t.symbol_to_id symbol with
-  | None -> None
-  | Some id -> Some t.books.(id)
+(* Resolve a [Symbol_id.t] to its book. Because [books] is indexed by id, this
+   is the one place a client-supplied id gets validated: an id outside
+   [0, Array.length books) is not a symbol we trade and must yield [None] —
+   never an out-of-bounds array read. *)
+let find_book (t : t) (symbol_id : Symbol_id.t) : Order_book.t option =
+  let i = Symbol_id.to_int symbol_id in
+  if i >= 0 && i < Array.length t.books then Some t.books.(i) else None
 ;;
 
-let book t symbol = find_book t symbol
+let book t symbol_id = find_book t symbol_id
 
 (** Run the matching loop: repeatedly find a compatible resting order and
     fill against it. Returns the list of Fill and Trade_report events

@@ -12,7 +12,7 @@ open Jsip_bot_runtime
 module SpammerConfig : sig
   type t =
     { participant : Participant.t (* Bot's participant name *)
-    ; symbols : Symbol.t list (* Books that the bot is targeting *)
+    ; symbols : Symbol_id.t list (* Books that the bot is targeting *)
     ; side : Side.t (* the side every order is sent on *)
     ; burst_interval : int (* number of ticks between consecutive bursts *)
     ; burst_size : int (* number of orders sent to each symbol per burst *)

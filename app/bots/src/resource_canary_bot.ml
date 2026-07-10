@@ -16,9 +16,9 @@ module RCConfig = struct
     { participant : Participant.t
     ; request_interval : int
     ; report_interval : int
-    ; symbols : Symbol.t list
-    ; book_query : Symbol.t -> Book.t option Deferred.t
-    ; latency_data : Per_symbol_data.t Symbol.Table.t
+    ; symbols : Symbol_id.t list
+    ; book_query : Symbol_id.t -> Book.t option Deferred.t
+    ; latency_data : Per_symbol_data.t Symbol_id.Table.t
     ; mutable ticks_since_start : int
     }
 end
@@ -54,7 +54,7 @@ module Latency_report = struct
 
   let to_string t symbol =
     [%string
-      "(%{symbol#Symbol}) most_recent_latency_ms: %{format_time_ms \
+      "(%{symbol#Symbol_id}) most_recent_latency_ms: %{format_time_ms \
        t.most_recent_latency_ms} avg_latency_ms: %{format_time_ms \
        t.avg_latency_ms} last_3_avg_latency_ms: %{format_time_ms \
        t.last_3_avg_latency_ms}"]

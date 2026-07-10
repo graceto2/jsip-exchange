@@ -100,7 +100,12 @@ let run (config : Scenario_config.t) ~port ~seed =
     [%string
       "[scenario] starting %{config.name} on port %{port#Int} \
        (seed=%{seed#Int})"];
-  let%bind server = Exchange_server.start ~symbols:config.symbols ~port () in
+  let%bind server =
+    Exchange_server.start
+      ~num_symbols:(List.length config.symbols)
+      ~port
+      ()
+  in
   let where_to_connect =
     Tcp.Where_to_connect.of_host_and_port
       { Host_and_port.host = "localhost"; port }

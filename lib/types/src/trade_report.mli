@@ -10,7 +10,7 @@
 open! Core
 
 type t =
-  { symbol : Symbol.t
+  { symbol : Symbol_id.t
   ; price : Price.t
   ; size : Size.t
   }

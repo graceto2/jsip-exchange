@@ -16,13 +16,13 @@ module Context = Jsip_bot_runtime.Bot_runtime.Context
 
 module Config = struct
   type t =
-    { symbol : Symbol.t
+    { symbol : Symbol_id.t
     ; fair_value_cents : int
     ; half_spread_cents : int
     ; size_per_level : int
     ; num_levels : int
     ; fill_client_oid : int ref
-    ; mutable inventory : int Symbol.Map.t
+    ; mutable inventory : int Symbol_id.Map.t
     ; mutable currently_resting_orders : Size.t Client_order_id.Map.t
     }
   [@@deriving sexp_of]

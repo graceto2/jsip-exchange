@@ -9,7 +9,7 @@ module Order_key = struct
 end
 
 type t =
-  { symbol : Symbol.t
+  { symbol : Symbol_id.t
   ; mutable bids : Order.t Order_key.Map.t
   ; mutable asks : Order.t Order_key.Map.t
   ; mutable ids : (Side.t * Price.t) Order_id.Map.t

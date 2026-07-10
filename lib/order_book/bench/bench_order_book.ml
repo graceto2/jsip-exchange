@@ -41,7 +41,7 @@ open Jsip_order_book
 (* Setup helpers *)
 (* ---------------------------------------------------------------- *)
 
-let aapl = Symbol.of_string "AAPL"
+let aapl = Symbol_id.of_int 0
 let alice = Participant.of_string "Alice"
 let bob = Participant.of_string "Bob"
 
@@ -92,7 +92,8 @@ let book_with_n_asks_at_same_price ~price_cents n =
 
 (** Build a matching engine with [n] resting sells on AAPL. *)
 let engine_with_n_asks ?(min_price = 10_000) n =
-  let engine = Matching_engine.create [ aapl ] in
+  ignore (aapl : Symbol_id.t);
+  let engine = Matching_engine.create 1 in
   for i = 1 to n do
     ignore
       (Matching_engine.submit
@@ -111,16 +112,12 @@ let engine_with_n_asks ?(min_price = 10_000) n =
 ;;
 
 (** Build a matching engine trading [n] distinct symbols, and return it
-    alongside one symbol (near the middle of the set) to look up. Used to
+    alongside one symbol id (near the middle of the set) to look up. Used to
     benchmark the pure symbol->book resolution in {!Matching_engine.book},
-    independent of any matching work. The symbols are uppercase-alphanumeric
-    (e.g. "SYM00042") so they pass {!Symbol.of_string} validation. *)
+    independent of any matching work. *)
 let engine_with_n_symbols n =
-  let symbols =
-    List.init n ~f:(fun i -> Symbol.of_string (sprintf "SYM%05d" i))
-  in
-  let engine = Matching_engine.create symbols in
-  let probe = List.nth_exn symbols (n / 2) in
+  let engine = Matching_engine.create n in
+  let probe = Symbol_id.of_int (n / 2) in
   engine, probe
 ;;
 
@@ -181,7 +178,7 @@ let bench_snapshot ~n =
 ;;
 
 (* Pure symbol->book resolution. This is the lookup Exercise 2 optimizes: with
-   the [Symbol.Map] it is O(log n) string comparisons; with a hashtable +
+   the [Symbol_id.Map] it is O(log n) string comparisons; with a hashtable +
    array it becomes one hash plus an O(1) array index. We look up an existing
    symbol so the cost is a real resolution, not an early [None]. *)
 let bench_book_lookup ~n =

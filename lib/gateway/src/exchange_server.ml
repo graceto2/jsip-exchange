@@ -109,8 +109,8 @@ let start_matching_loop
          Dispatcher.dispatch dispatcher events))
 ;;
 
-let start ~symbols ~port () =
-  let engine = Matching_engine.create symbols in
+let start ~num_symbols ~port () =
+  let engine = Matching_engine.create num_symbols in
   let dispatcher = Dispatcher.create () in
   let collector = Metrics_collector.create () in
   let request_reader, request_writer = Pipe.create () in

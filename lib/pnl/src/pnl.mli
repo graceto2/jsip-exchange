@@ -69,7 +69,7 @@ val apply_trade_report : t -> Trade_report.t -> t
 module Position_summary : sig
   (** P&L for a single (participant, symbol) pair at a point in time. *)
   type t =
-    { symbol : Symbol.t
+    { symbol : Symbol_id.t
     ; inventory : int
     (** Signed share count: positive long, negative short, zero flat. *)
     ; average_entry_price : Price.t option

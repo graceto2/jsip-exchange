@@ -12,11 +12,11 @@ let description =
    market data is written without pushback."
 ;;
 
-let symbol = Symbol.of_string "AAPL"
+let symbol = Symbol_id.of_int 0
 let fair_value_cents = 15_000
 
 let oracle_config : Fundamental_oracle.Config.t =
-  Symbol.Map.of_alist_exn
+  Symbol_id.Map.of_alist_exn
     [ ( symbol
       , { Fundamental_oracle.Config.initial_price_cents = fair_value_cents
         ; volatility_cents_per_sec = 10.0
@@ -37,7 +37,7 @@ let market_maker_spec () =
     ; size_per_level = 100
     ; num_levels = 30
     ; fill_client_oid = ref 900
-    ; inventory = Symbol.Map.empty
+    ; inventory = Symbol_id.Map.empty
     ; currently_resting_orders = Client_order_id.Map.empty
     }
   in

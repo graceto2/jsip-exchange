@@ -18,7 +18,7 @@ open Jsip_types
 
 module Config : sig
   type t =
-    { symbols : Symbol.t list (** symbols to pile resting orders across *)
+    { symbols : Symbol_id.t list (** symbols to pile resting orders across *)
     ; orders_per_tick : int
     (** orders submitted each tick aka the primary intensity knob *)
     ; order_size : Size.t (** shares per order; kept small *)
