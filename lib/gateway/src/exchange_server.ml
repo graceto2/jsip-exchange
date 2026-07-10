@@ -27,8 +27,9 @@ type t =
   ; request_writer : (Time_ns.t * Matching_engine_action.t) Pipe.Writer.t
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
-  ; logged_in_participants : Participant.Hash_set.t
+  ; logged_in_participants : Hash_set.M(Participant_id).t
   ; stop : unit Ivar.t
+  ; registry : Participant_registry.t
   (* Filled by [close] to stop the per-second stats sampler. *)
   }
 
@@ -122,7 +123,13 @@ let start ~symbols ~port () =
      running. *)
   Clock_ns.every ~stop:(Ivar.read stop) stats_sample_interval (fun () ->
     Dispatcher.push_stats dispatcher (Metrics_collector.snapshot collector));
-  let logged_in_participants = Participant.Hash_set.create () in
+  let registry = Participant_registry.create () in
+  (* Who is connected *right now*, keyed by their permanent
+     [Participant_id.t]. The id is already in hand from [intern] at login, and
+     int hashing beats string hashing. Deliberately separate from [registry]:
+     this set is pruned on disconnect (presence), whereas the registry never
+     forgets a name (identity). *)
+  let logged_in_participants = Hash_set.create (module Participant_id) in
   let implementations =
     Rpc.Implementations.create_exn
       ~implementations:
@@ -137,18 +144,25 @@ let start ~symbols ~port () =
                 Deferred.Or_error.error_s
                   [%message "already logged in" (existing : Participant.t)]
               | None ->
-                if Hash_set.mem logged_in_participants participant
+                (* Resolve the name to its permanent id: a new name mints one,
+                   a reconnecting name gets the id it had before. *)
+                let id =
+                  Participant_registry.intern registry participant
+                in
+                if Hash_set.mem logged_in_participants id
                 then
+                  (* The id is present, so the name is already live on another
+                     connection — reject this second login. *)
                   Deferred.Or_error.error_s
                     [%message
-                      "participant name already taken"
+                      "participant name already in use"
                         (participant : Participant.t)]
                 else (
                   let session =
                     Dispatcher.set_up_session dispatcher participant
                   in
                   conn_state.session <- Some session;
-                  Hash_set.add logged_in_participants participant;
+                  Hash_set.add logged_in_participants id;
                   Deferred.Or_error.return participant)))
         ; Rpc.Rpc.implement
             Rpc_protocol.submit_order_rpc
@@ -215,9 +229,13 @@ let start ~symbols ~port () =
            | None -> ()
            | Some session ->
              Dispatcher.clean_up_session dispatcher session;
+             (* The participant is already registered, so [intern] just looks
+                up the id it minted at login — it never mints here. *)
              Hash_set.remove
                logged_in_participants
-               (Session.participant session));
+               (Participant_registry.intern
+                  registry
+                  (Session.participant session)));
         state)
       ~where_to_listen:(Tcp.Where_to_listen.of_port port)
       ()
@@ -230,6 +248,7 @@ let start ~symbols ~port () =
   ; port = actual_port
   ; logged_in_participants
   ; stop
+  ; registry
   }
 ;;
 
