@@ -6,33 +6,40 @@ open Jsip_types
    are kept in lockstep by [intern]. *)
 type t =
   { generator : Participant_id.Generator.t
-  ; name_to_id : Participant_id.t Participant.Table.t
-  ; id_to_name : Participant.t Queue.t
+  ; participant_to_id : Participant_id.t Participant.Table.t
+  ; id_to_participant : Participant.t Queue.t
   }
 [@@deriving sexp_of]
 
 let create () =
   { generator = Participant_id.Generator.create ()
-  ; name_to_id = Participant.Table.create ()
-  ; id_to_name = Queue.create ()
+  ; participant_to_id = Participant.Table.create ()
+  ; id_to_participant = Queue.create ()
   }
 ;;
 
-let intern t name =
-  match Hashtbl.find t.name_to_id name with
+let intern t participant =
+  match Hashtbl.find t.participant_to_id participant with
   | Some id -> id
   | None ->
-    (* TODO(human): [name] is new. Mint a fresh id from [t.generator], record
-       the [name -> id] mapping in [t.name_to_id], and append [name] to
-       [t.id_to_name] so the id doubles as its slot. Return the id.
-
-       Invariant to preserve: because the generator starts at 0 and the queue
-       starts empty, the id you mint must equal [Queue.length t.id_to_name] at
-       the moment you enqueue — that lockstep is exactly what lets
-       [name_of_id] be a direct [Queue.get]. *)
-    failwith "TODO(human): mint and record a fresh id for a new name"
+    let id = Participant_id.Generator.next t.generator in
+    let int_of_id = Participant_id.to_int id in
+    if not (int_of_id = Queue.length t.id_to_participant)
+    then
+      raise_s
+        [%message
+          "id/queue length desync"
+            (int_of_id : int)
+            ~len:(Queue.length t.id_to_participant : int)];
+    (match Hashtbl.add t.participant_to_id ~key:participant ~data:id with
+     | `Duplicate ->
+       raise_s
+         [%message "name already interned" (participant : Participant.t)]
+     | `Ok ->
+       Queue.enqueue t.id_to_participant participant;
+       id)
 ;;
 
 let name_of_id t (id : Participant_id.t) =
-  Queue.get t.id_to_name (id :> int)
+  Queue.get t.id_to_participant (id :> int)
 ;;

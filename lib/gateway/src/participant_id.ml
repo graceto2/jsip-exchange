@@ -5,6 +5,11 @@ open! Core
    ids, while the rest of the server may still read one as an int. *)
 type t = int [@@deriving sexp_of, compare, equal, hash]
 
+(* Reading an id as a plain [int] — e.g. to index the registry's id->name
+   [Queue]. The [private int] representation already permits this via a
+   coercion; [to_int] just gives it a name callers can read. *)
+let to_int t = t
+
 module Generator = struct
   type t = { mutable next : int } [@@deriving sexp_of]
 
