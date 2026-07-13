@@ -20,6 +20,15 @@ let run_client ~host ~port ~participant_name =
     Rpc.Rpc.dispatch_exn Rpc_protocol.login_rpc conn participant_name
     >>| Or_error.ok_exn
   in
+  (* Fetch the instrument list once, at connect, and mirror it locally. The
+     server is authoritative and its list never changes mid-run, so there is
+     nothing to refresh — one round trip buys every symbol lookup the session
+     will ever need, in both directions. *)
+  let%bind directory =
+    Rpc.Rpc.dispatch_exn Rpc_protocol.symbol_directory_rpc conn ()
+    >>| Symbol_directory.of_alist
+    >>| Or_error.ok_exn
+  in
   let%bind session_feed, _metadata =
     Rpc.Pipe_rpc.dispatch_exn Rpc_protocol.session_feed_rpc conn ()
   in
@@ -27,18 +36,30 @@ let run_client ~host ~port ~participant_name =
     (Pipe.iter_without_pushback session_feed ~f:(fun event ->
        match event with
        | Fill fill ->
-         let fill = Fill.to_participant_view fill participant in
+         let fill =
+           Event_protocol.format_fill_for_participant
+             ~directory
+             fill
+             participant
+         in
          (match fill with Some s -> print_endline s | None -> ())
        | _ ->
-         let e = Event_protocol.format_event event in
+         let e = Event_protocol.format_event ~directory event in
          print_endline [%string "[%{participant#Participant}] %{e}"]));
+  let tradable =
+    Symbol_directory.to_alist directory
+    |> List.map ~f:(fun (_id, symbol) -> Symbol.to_string symbol)
+    |> String.concat ~sep:", "
+  in
   print_endline
     [%string
       {|
 Connected to exchange at %{host}:%{port#Int} as %{participant#Participant}
-Commands: BUY|SELL <client_id> <symbol_id> <size> <price> [IOC|DAY]
-          BOOK <symbol_id>
-          SUBSCRIBE <symbol_id>  (stream market data)
+Commands: BUY|SELL <client_id> <symbol> <size> <price> [IOC|DAY]
+          BOOK <symbol>
+          SUBSCRIBE <symbol>  (stream market data)
+
+Symbols: %{tradable}
 
 Order acknowledgements, fills, and cancellations are temporarily printed
 by the server process; the SUBSCRIBE command attaches you to a per-symbol
@@ -54,16 +75,19 @@ market-data feed.|}];
       if String.is_empty line
       then loop ()
       else (
-        match Exchange_command.parse line with
+        match Exchange_command.parse ~directory line with
         | Ok (Exchange_command.Book symbol) ->
           let%bind result =
             Rpc.Rpc.dispatch_exn Rpc_protocol.book_query_rpc conn symbol
           in
           (match result with
            | None ->
-             print_endline
-               [%string "No book available for %{symbol#Symbol_id}"]
-           | Some result -> print_endline (Book.to_string result));
+             let symbol =
+               Event_protocol.symbol_to_string ~directory symbol
+             in
+             print_endline [%string "No book available for %{symbol}"]
+           | Some result ->
+             print_endline (Event_protocol.format_book ~directory result));
           loop ()
         | Ok (Exchange_command.Subscribe symbol) ->
           let%bind result =
@@ -78,15 +102,18 @@ market-data feed.|}];
                [%string "ERROR subscribing: %{Error.to_string_hum err}"];
              loop ()
            | Ok (Ok (reader, _id)) ->
+             let symbol =
+               Event_protocol.symbol_to_string ~directory symbol
+             in
              print_endline
                [%string
-                 {| Subscribed to %{symbol#Symbol_id} market data. Updates will appear below. Continue entering commands as normal.|}];
+                 {| Subscribed to %{symbol} market data. Updates will appear below. Continue entering commands as normal.|}];
              (* Read market data in the background; the command loop
                 continues running concurrently. *)
              don't_wait_for
                (Pipe.iter_without_pushback reader ~f:(fun event ->
-                  print_endline
-                    [%string "[MD] %{Event_protocol.format_event event}"]));
+                  let event = Event_protocol.format_event ~directory event in
+                  print_endline [%string "[MD] %{event}"]));
              loop ())
         | Ok (Exchange_command.Submit request) ->
           let%bind.Deferred.Or_error () =
@@ -102,8 +129,7 @@ market-data feed.|}];
           in
           loop ()
         | Error err ->
-          print_endline
-            [%string "ERROR subscribing: %{Error.to_string_hum err}"];
+          print_endline [%string "ERROR: %{Error.to_string_hum err}"];
           loop ())
   in
   loop ()

@@ -81,8 +81,11 @@ module Filter = struct
     | Substring s -> String.Caseless.is_substring line ~substring:s
   ;;
 
-  let matches t event =
-    let line = Event_protocol.format_event event in
+  (* The substring predicate matches against the *rendered* line, so it needs
+     the directory: typing "AAPL" into the filter box should match an event
+     the user can see as AAPL, not one they'd have to know is id 0. *)
+  let matches t ~directory event =
+    let line = Event_protocol.format_event ~directory event in
     List.for_all t ~f:(predicate_matches event line)
   ;;
 end
@@ -93,9 +96,15 @@ type t =
   ; (* Ordered by first appearance — newest symbol last. Reorganising on
        every BBO would be visually noisy. *)
     bbos_rev : (Symbol_id.t * Bbo.t) list
+  ; (* Fetched from the server once at connect. The log holds it because the
+       log renders: both the substring filter and the displayed lines go
+       through [Event_protocol], which needs a name for each symbol id. *)
+    directory : Symbol_directory.t
   }
 
-let create () = { events_rev = []; filter = Filter.all; bbos_rev = [] }
+let create ~directory =
+  { events_rev = []; filter = Filter.all; bbos_rev = []; directory }
+;;
 
 let update_bbos bbos_rev symbol bbo =
   let found, updated =
@@ -119,18 +128,24 @@ let add_event t event =
 
 let event_count t = List.length t.events_rev
 let current_bbos t = List.rev t.bbos_rev
+let directory t = t.directory
 let set_filter t filter = { t with filter }
 let filter t = t.filter
 
 let visible_events t =
-  List.rev_filter t.events_rev ~f:(Filter.matches t.filter)
+  List.rev_filter
+    t.events_rev
+    ~f:(Filter.matches t.filter ~directory:t.directory)
 ;;
 
 let visible_lines t =
-  List.map (visible_events t) ~f:Event_protocol.format_event
+  List.map
+    (visible_events t)
+    ~f:(Event_protocol.format_event ~directory:t.directory)
 ;;
 
 let visible_styled_lines t =
   List.map (visible_events t) ~f:(fun event ->
-    Color.of_event event, Event_protocol.format_event event)
+    ( Color.of_event event
+    , Event_protocol.format_event ~directory:t.directory event ))
 ;;

@@ -166,8 +166,11 @@ let%expect_test "format_event: all event types" =
         }
     ]
   in
+  (* The identity directory names each symbol after its own id, so this pins
+     the layout of every variant without names getting in the way. *)
+  let directory = Symbol_directory.numbered ~num_symbols:3 in
   List.iter events ~f:(fun e ->
-    print_endline (Event_protocol.format_event e));
+    print_endline (Event_protocol.format_event ~directory e));
   [%expect
     {|
     ACCEPTED id=1 0 BUY 100@$150.00 DAY
@@ -178,7 +181,45 @@ let%expect_test "format_event: all event types" =
     BBO 0 bid=$149.90 x200 ask=$150.10 x100
     BBO 0 bid=- ask=-
     TRADE 0 $150.00 x100
+    |}];
+  (* The same events through a real directory: every symbol id becomes the
+     name a human knows it by. This is the whole reason the directory exists
+     — nothing else about the events changed. *)
+  let directory =
+    [ "AAPL"; "TSLA"; "GOOG" ]
+    |> List.map ~f:Symbol.of_string
+    |> Symbol_directory.of_symbols
+    |> ok_exn
+  in
+  List.iter events ~f:(fun e ->
+    print_endline (Event_protocol.format_event ~directory e));
+  [%expect
+    {|
+    ACCEPTED id=1 AAPL BUY 100@$150.00 DAY
+    FILL fill_id=1 aggressor_client_oid=0 resting_client_oid=1 AAPL $150.00 x100 aggressor=2(Alice) BUY resting=1(Bob)
+    CANCELLED order_id=3 client_oid=2 TSLA remaining=50 reason=IOC_REMAINDER
+    REJECTED GOOG SELL 10@$280.00 reason=unknown symbol
+    REJECTED cancel request with client_oid=0 reason=Couldn't find the order
+    BBO AAPL bid=$149.90 x200 ask=$150.10 x100
+    BBO AAPL bid=- ask=-
+    TRADE AAPL $150.00 x100
     |}]
+;;
+
+(* An id no directory knows about still renders. A client's directory is a
+   mirror fetched once at connect; a stale one must not take down its render
+   loop, so an unknown id falls back to printing the raw integer. *)
+let%expect_test "format_event: an unknown symbol id falls back to the id" =
+  let directory = Symbol_directory.numbered ~num_symbols:1 in
+  let event =
+    Exchange_event.Trade_report
+      { symbol = Symbol_id.of_int 7
+      ; price = Price.of_int_cents 15000
+      ; size = Size.of_int 100
+      }
+  in
+  print_endline (Event_protocol.format_event ~directory event);
+  [%expect {| TRADE 7 $150.00 x100 |}]
 ;;
 
 (* --- Round-trip: parse then format --- *)

@@ -15,3 +15,4 @@ module Exchange_server = Exchange_server
 module Exchange_command = Exchange_command
 module Metrics_collector = Metrics_collector
 module Stats = Stats
+module Symbol_directory = Symbol_directory

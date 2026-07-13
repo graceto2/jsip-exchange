@@ -76,3 +76,16 @@ val session_feed_rpc : (unit, Exchange_event.t, Error.t) Rpc.Pipe_rpc.t
     Like {!audit_log_rpc}, this is intended for the operator's monitoring and
     dashboard tools, not for ordinary participants. *)
 val stats_rpc : (unit, Stats.Stats_snapshot.t, Error.t) Rpc.Pipe_rpc.t
+
+(** Serve the exchange's instrument list: the [(id, ticker)] pairs a client
+    needs to show humans [AAPL] instead of [0], and to turn a typed [AAPL]
+    back into an id when submitting.
+
+    Clients call this once at connect and mirror the result locally with
+    {!Symbol_directory.of_alist}. The wire deliberately carries plain pairs
+    rather than a {!Symbol_directory.t}: the directory is a local lookup
+    structure, and the pairs are the only part of it that is data.
+
+    The server never calls this — it neither renders nor parses names, and
+    runs on ids end to end. This RPC exists purely so consumers can. *)
+val symbol_directory_rpc : (unit, (Symbol_id.t * Symbol.t) list) Rpc.Rpc.t

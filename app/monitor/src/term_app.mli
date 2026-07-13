@@ -8,17 +8,23 @@
 open! Core
 open! Async
 open Jsip_types
+open Jsip_gateway
 open Bonsai_term
 
 (** The bonsai_term app. Pass to [Bonsai_term.start_with_exit]. [events] is
     the pipe of exchange events the app should drain into its controller
     (typically the reader returned by [Rpc_protocol.audit_log_rpc]). The
     drain starts when the Bonsai graph activates and ends when [events] is
-    closed. *)
+    closed.
+
+    [directory] is the exchange's instrument list, fetched over
+    [Rpc_protocol.symbol_directory_rpc] at connect. The audit log carries
+    symbol {i ids}; the directory is what lets the monitor show [AAPL]. *)
 val app
   :  events:Exchange_event.t Pipe.Reader.t
   -> exit:(unit -> unit Effect.t)
   -> dimensions:Dimensions.t Bonsai.t
+  -> directory:Symbol_directory.t
   -> local_ Bonsai.graph
   -> view:View.t Bonsai.t * handler:(Event.t -> unit Effect.t) Bonsai.t
 

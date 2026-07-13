@@ -9,6 +9,7 @@
 
 open! Core
 open Jsip_types
+open Jsip_gateway
 
 (** Coarse-grained grouping of [Exchange_event.t] variants, suited for "show
     only orders" / "show only trades" / "show only market data" filters.
@@ -64,13 +65,19 @@ module Filter : sig
   (** [combine a b] returns a filter that requires both [a] and [b]. *)
   val combine : t -> t -> t
 
-  (** Whether the filter would keep [event]. *)
-  val matches : t -> Exchange_event.t -> bool
+  (** Whether the filter would keep [event]. Takes a [directory] because the
+      substring predicate matches against the event's {i rendered} line — a
+      user filtering on [AAPL] should match the events they can see as AAPL,
+      not have to know AAPL is id 0. *)
+  val matches : t -> directory:Symbol_directory.t -> Exchange_event.t -> bool
 end
 
 type t
 
-val create : unit -> t
+(** [directory] is fetched from the server once at connect. The log holds it
+    because the log renders: every line it produces resolves symbol ids to
+    names through it. *)
+val create : directory:Symbol_directory.t -> t
 
 (** Append an event to the log. Also refreshes [current_bbos] when [event] is
     a [Best_bid_offer_update]. *)
@@ -86,6 +93,10 @@ val event_count : t -> int
     time it produces a BBO and never reordered, even when later BBOs update
     its value. *)
 val current_bbos : t -> (Symbol_id.t * Bbo.t) list
+
+(** The instrument list this log renders through. Exposed so the UI can name
+    symbols it displays outside an event line — the BBO panel, for one. *)
+val directory : t -> Symbol_directory.t
 
 (** Replace the active filter. *)
 val set_filter : t -> Filter.t -> t

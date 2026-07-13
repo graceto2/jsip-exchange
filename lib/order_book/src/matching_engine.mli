@@ -40,4 +40,14 @@ val cancel
     (not a symbol this engine trades). *)
 val book : t -> Symbol_id.t -> Order_book.t option
 
-(* val end_of_day : t -> Exchange_event.t list *)
+(** Close the trading day: every resting [Day] order is removed from its
+    book, yielding one [Order_cancel] event per order with reason
+    {!Jsip_types.Cancel_reason.End_of_day}, followed by a
+    [Best_bid_offer_update] for each symbol whose quote changed as a result
+    (which is every symbol that had a resting order). [Ioc] orders never
+    rest, so they cannot appear here.
+
+    The books are genuinely emptied, not just announced as empty: after this
+    the engine will not match against the cancelled orders. Calling it on an
+    idle exchange produces no events. *)
+val end_of_day : t -> Exchange_event.t list

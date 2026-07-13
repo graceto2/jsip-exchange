@@ -19,7 +19,24 @@ type t =
 
 (* No "as <name>" should be specified in the command, since we require participants to log in before submitting orders. *)
 
-let parse_buy_or_sell input_tokens ~side =
+(* Humans type symbol names; the wire carries ids. The directory is the only
+   thing that knows the mapping, so this is where a name becomes an id — and
+   below this boundary nothing ever sees a name again.
+
+   An unknown symbol is caught here rather than server-side: the client knows
+   the full instrument list, so it can reject [BUY BANANA] without a round
+   trip. The server still range-checks whatever id does arrive — it does not
+   trust the client — but a well-behaved client never sends a bad one. *)
+let symbol_id_of_string ~directory symbol_str =
+  match Or_error.try_with (fun () -> Symbol.of_string symbol_str) with
+  | Error _ -> Error [%string "invalid symbol: %{symbol_str}"]
+  | Ok symbol ->
+    (match Symbol_directory.id_of_symbol directory symbol with
+     | Some symbol_id -> Ok symbol_id
+     | None -> Error [%string "unknown symbol: %{symbol_str}"])
+;;
+
+let parse_buy_or_sell input_tokens ~side ~directory =
   let open Result.Let_syntax in
   match input_tokens with
   | client_order_id :: symbol_str :: size_str :: price_str :: rest ->
@@ -35,15 +52,7 @@ let parse_buy_or_sell input_tokens ~side =
         let exn_str = Exn.to_string exn in
         Error [%string "invalid price: %{price_str}\nexception: %{exn_str}"]
     in
-    let%bind symbol =
-      (* The client now submits the numeric symbol id directly, not a ticker.
-         Range-checking (is this a symbol we trade?) happens server-side;
-         here we only parse the integer. *)
-      match Int.of_string_opt symbol_str with
-      | Some n when n >= 0 -> Ok (Symbol_id.of_int n)
-      | Some _ -> Error "symbol id must be non-negative"
-      | None -> Error [%string "invalid symbol id: %{symbol_str}"]
-    in
+    let%bind symbol = symbol_id_of_string ~directory symbol_str in
     let%bind time_in_force, rest =
       match rest with
       | tif_str :: rest' ->
@@ -69,15 +78,18 @@ let parse_buy_or_sell input_tokens ~side =
           }
           : Order.Request.t))
   | _ ->
-    Error
-      "expected: BUY|SELL <client_id> <symbol_id> <size> <price> [DAY|IOC]"
+    Error "expected: BUY|SELL <client_id> <symbol> <size> <price> [DAY|IOC]"
 ;;
 
-let parse_buy_or_sell_exn list ~side =
-  Result.ok_or_failwith (parse_buy_or_sell list ~side)
+let parse_buy_or_sell_exn list ~side ~directory =
+  Result.ok_or_failwith (parse_buy_or_sell list ~side ~directory)
 ;;
 
-let parse_exn string =
+let symbol_id_of_string_exn ~directory symbol_str =
+  Result.ok_or_failwith (symbol_id_of_string ~directory symbol_str)
+;;
+
+let parse_exn string ~directory =
   let line = String.strip string in
   let parts =
     String.split line ~on:' ' |> List.filter ~f:(Fn.non String.is_empty)
@@ -87,16 +99,20 @@ let parse_exn string =
   | first_word :: rest ->
     let verb = Verb.of_string first_word in
     (match verb with
-     | Buy -> parse_buy_or_sell_exn rest ~side:Side.Buy
-     | Sell -> parse_buy_or_sell_exn rest ~side:Side.Sell
+     | Buy -> parse_buy_or_sell_exn rest ~side:Side.Buy ~directory
+     | Sell -> parse_buy_or_sell_exn rest ~side:Side.Sell ~directory
      | Book ->
        (match rest with
-        | symbol :: [] -> Book (Symbol_id.of_int (Int.of_string symbol))
+        | symbol_str :: [] ->
+          Book (symbol_id_of_string_exn ~directory symbol_str)
         | _ -> failwith "failed book, too many entries")
      | Subscribe ->
        (match rest with
-        | symbol :: [] -> Subscribe (Symbol_id.of_int (Int.of_string symbol))
+        | symbol_str :: [] ->
+          Subscribe (symbol_id_of_string_exn ~directory symbol_str)
         | _ -> failwith "failed subscribe, too many entries"))
 ;;
 
-let parse string = Or_error.try_with (fun () -> parse_exn string)
+let parse ~directory string =
+  Or_error.try_with (fun () -> parse_exn string ~directory)
+;;

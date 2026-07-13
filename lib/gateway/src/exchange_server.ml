@@ -4,9 +4,20 @@ open Jsip_types
 open Jsip_order_book
 
 module Connection_state = struct
-  type t = { mutable session : Session.t option }
+  (* The id is stashed next to the session at login rather than looked up
+     again later: the two are established together, and pairing them means a
+     connection can never be half-logged-in. It is what [close_finished]
+     hands to {!Participant_registry.log_out}. *)
+  type login =
+    { session : Session.t
+    ; participant_id : Participant_id.t
+    }
 
-  let participant t = Option.map t.session ~f:Session.participant
+  type t = { mutable login : login option }
+
+  let participant t =
+    Option.map t.login ~f:(fun login -> Session.participant login.session)
+  ;;
 end
 
 module Matching_engine_action = struct
@@ -27,16 +38,15 @@ type t =
   ; request_writer : (Time_ns.t * Matching_engine_action.t) Pipe.Writer.t
   ; tcp_server : (Socket.Address.Inet.t, int) Tcp.Server.t
   ; port : int
-  ; logged_in_participants : Hash_set.M(Participant_id).t
-      (* change to participant_id.hash.set *)
   ; stop : unit Ivar.t
+      (* Filled by [close] to stop the per-second stats sampler. *)
   ; registry : Participant_registry.t
-  (* Filled by [close] to stop the per-second stats sampler. *)
+  (* Who exists and who is connected right now. *)
   }
 
 let require_login (conn_state : Connection_state.t) =
-  match conn_state.session with
-  | Some session -> Ok session
+  match conn_state.login with
+  | Some login -> Ok login
   | None -> Or_error.error_string "not logged in"
 ;;
 
@@ -110,8 +120,13 @@ let start_matching_loop
          Dispatcher.dispatch dispatcher events))
 ;;
 
-let start ~num_symbols ~port () =
-  let engine = Matching_engine.create num_symbols in
+let start ~directory ~port () =
+  (* The directory sizes the engine, so "id is in the directory" and "id is
+     in range for the engine" are the same statement — there is exactly one
+     bounds check, in [Matching_engine.book], and no second one to drift. *)
+  let engine =
+    Matching_engine.create (Symbol_directory.num_symbols directory)
+  in
   let dispatcher = Dispatcher.create () in
   let collector = Metrics_collector.create () in
   let request_reader, request_writer = Pipe.create () in
@@ -125,12 +140,6 @@ let start ~num_symbols ~port () =
   Clock_ns.every ~stop:(Ivar.read stop) stats_sample_interval (fun () ->
     Dispatcher.push_stats dispatcher (Metrics_collector.snapshot collector));
   let registry = Participant_registry.create () in
-  (* Who is connected *right now*, keyed by their permanent
-     [Participant_id.t]. The id is already in hand from [intern] at login,
-     and int hashing beats string hashing. Deliberately separate from
-     [registry]: this set is pruned on disconnect (presence), whereas the
-     registry never forgets a name (identity). *)
-  let logged_in_participants = Hash_set.create (module Participant_id) in
   let implementations =
     Rpc.Implementations.create_exn
       ~implementations:
@@ -145,30 +154,24 @@ let start ~num_symbols ~port () =
                 Deferred.Or_error.error_s
                   [%message "already logged in" (existing : Participant.t)]
               | None ->
-                (* Resolve the name to its permanent id: a new name mints
-                   one, a reconnecting name gets the id it had before. *)
-                let id = Participant_registry.intern registry participant in
-                if Hash_set.mem logged_in_participants id
-                then
-                  (* The id is present, so the name is already live on
-                     another connection — reject this second login. *)
-                  Deferred.Or_error.error_s
-                    [%message
-                      "participant name already in use"
-                        (participant : Participant.t)]
-                else (
-                  let session =
-                    Dispatcher.set_up_session dispatcher participant
-                  in
-                  conn_state.session <- Some session;
-                  Hash_set.add logged_in_participants id;
-                  Deferred.Or_error.return participant)))
+                (* The registry owns both halves of this: it resolves the
+                   name to its permanent id (minting one for a new name,
+                   returning the old one for a reconnect) and rejects the
+                   login if that name is already live on another connection. *)
+                (match Participant_registry.log_in registry participant with
+                 | Error _ as err -> return err
+                 | Ok participant_id ->
+                   let session =
+                     Dispatcher.set_up_session dispatcher participant
+                   in
+                   conn_state.login <- Some { session; participant_id };
+                   Deferred.Or_error.return participant)))
         ; Rpc.Rpc.implement
             Rpc_protocol.submit_order_rpc
             (fun conn_state request ->
                match require_login conn_state with
                | Error _ as err -> return err
-               | Ok session ->
+               | Ok { session; participant_id = _ } ->
                  handle_submit
                    ~request_writer
                    ~participant:(Session.participant session)
@@ -178,7 +181,7 @@ let start ~num_symbols ~port () =
             (fun conn_state client_order_id ->
                match require_login conn_state with
                | Error _ as err -> return err
-               | Ok session ->
+               | Ok { session; participant_id = _ } ->
                  handle_cancel
                    ~request_writer
                    ~participant:(Session.participant session)
@@ -207,12 +210,15 @@ let start ~num_symbols ~port () =
             (fun conn_state () ->
                match require_login conn_state with
                | Error _ as err -> return err
-               | Ok session ->
+               | Ok { session; participant_id = _ } ->
                  Deferred.Or_error.return (Session.reader session))
         ; Rpc.Pipe_rpc.implement Rpc_protocol.stats_rpc (fun conn_state () ->
             ignore conn_state;
             let reader = Dispatcher.subscribe_stats dispatcher in
             return (Ok reader))
+        ; Rpc.Rpc.implement'
+            Rpc_protocol.symbol_directory_rpc
+            (fun _conn_state () -> Symbol_directory.to_alist directory)
         ]
       ~on_unknown_rpc:`Close_connection
       ~on_exception:Log_on_background_exn
@@ -221,20 +227,16 @@ let start ~num_symbols ~port () =
     Rpc.Connection.serve
       ~implementations
       ~initial_connection_state:(fun _addr conn ->
-        let (state : Connection_state.t) = { session = None } in
+        let (state : Connection_state.t) = { login = None } in
         don't_wait_for
           (let%map () = Rpc.Connection.close_finished conn in
-           match state.session with
+           match state.login with
            | None -> ()
-           | Some session ->
+           | Some { session; participant_id } ->
              Dispatcher.clean_up_session dispatcher session;
-             (* The participant is already registered, so [intern] just looks
-                up the id it minted at login — it never mints here. *)
-             Hash_set.remove
-               logged_in_participants
-               (Participant_registry.intern
-                  registry
-                  (Session.participant session)));
+             (* Presence only: the registry still remembers the name and its
+                id, so a reconnect gets the same id back. *)
+             Participant_registry.log_out registry participant_id);
         state)
       ~where_to_listen:(Tcp.Where_to_listen.of_port port)
       ()
@@ -245,7 +247,6 @@ let start ~num_symbols ~port () =
   ; request_writer
   ; tcp_server
   ; port = actual_port
-  ; logged_in_participants
   ; stop
   ; registry
   }

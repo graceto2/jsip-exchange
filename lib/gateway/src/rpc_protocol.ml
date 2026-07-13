@@ -77,3 +77,12 @@ let stats_rpc =
     ~bin_error:Error.bin_t
     ()
 ;;
+
+let symbol_directory_rpc =
+  Rpc.Rpc.create
+    ~name:"symbol-directory"
+    ~version:1
+    ~bin_query:[%bin_type_class: unit]
+    ~bin_response:[%bin_type_class: (Symbol_id.t * Symbol.t) list]
+    ~include_in_error_count:Only_on_exn
+;;

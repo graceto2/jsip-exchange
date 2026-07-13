@@ -13,10 +13,19 @@ open Jsip_types
 open Jsip_gateway
 open Jsip_market_maker
 
-(* Symbol ids [0 .. num_symbols - 1] are traded. The human tickers they stand
-   for (AAPL, TSLA, ...) will come from a directory later; for now the server
-   just decides how many instruments exist. *)
-let num_symbols = 4
+(* The authoritative instrument list. Ids are positions here — AAPL is 0,
+   TSLA is 1, and so on — and this is the only place that decides either the
+   tickers or how many instruments exist: the symbol count is derived from
+   the list, so the two can no longer drift apart.
+
+   The server runs on ids end to end and never renders a name; it just serves
+   these pairs to clients over [symbol_directory_rpc] so they can. *)
+let directory =
+  [ "AAPL"; "TSLA"; "GOOG"; "MSFT" ]
+  |> List.map ~f:Symbol.of_string
+  |> Symbol_directory.of_symbols
+  |> ok_exn
+;;
 
 let connect_as ~where_to_connect participant =
   (* TODO: once login_rpc exists (week 2, exercise 1), dispatch it here so
@@ -109,7 +118,7 @@ let trade_back_and_forth ~where_to_connect =
 ;;
 
 let start ~port ~market_maker_behavior =
-  let%bind server = Exchange_server.start ~num_symbols ~port () in
+  let%bind server = Exchange_server.start ~directory ~port () in
   let where_to_connect =
     Tcp.Where_to_connect.of_host_and_port { host = "localhost"; port }
   in
@@ -134,12 +143,16 @@ let start ~port ~market_maker_behavior =
     [%string
       "JSIP Exchange server listening on port %{Exchange_server.port \
        server#Int}"];
+  (* Print both halves of each pair: the ticker a human recognizes and the id
+     that actually travels on the wire, so an operator can read the ids in
+     the audit log. *)
   let symbols =
-    List.init num_symbols ~f:(fun i ->
-      Symbol_id.to_string (Symbol_id.of_int i))
+    Symbol_directory.to_alist directory
+    |> List.map ~f:(fun (id, symbol) ->
+      [%string "%{symbol#Symbol} (%{Symbol_id.to_int id#Int})"])
     |> String.concat ~sep:", "
   in
-  print_endline [%string "Trading symbol ids: %{symbols}"];
+  print_endline [%string "Trading symbols: %{symbols}"];
   Exchange_server.close_finished server
 ;;
 

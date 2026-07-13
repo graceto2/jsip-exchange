@@ -16,6 +16,7 @@
 open! Core
 open Jsip_types
 open Jsip_order_book
+open Jsip_gateway
 
 (** {2 Constants}
 
@@ -26,6 +27,12 @@ open Jsip_order_book
 val aapl : Symbol_id.t
 val tsla : Symbol_id.t
 val goog : Symbol_id.t
+
+(** Names {!aapl}, {!tsla} and {!goog} — [AAPL], [TSLA], [GOOG]. Pass it to
+    {!Jsip_gateway.Event_protocol} when a test renders events itself; the
+    printers here already use it. *)
+val directory : Symbol_directory.t
+
 val alice : Participant.t
 val bob : Participant.t
 val charlie : Participant.t

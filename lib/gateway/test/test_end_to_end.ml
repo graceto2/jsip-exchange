@@ -12,6 +12,12 @@ open Jsip_gateway
 open Jsip_test_harness
 open E2e_helpers
 
+(* These tests speak in symbol ids from end to end, so they render through an
+   identity directory: each symbol is named after its own id and the output
+   below reads exactly as it did before names existed. Name rendering is
+   covered in [test_event_protocol]. *)
+let directory = Symbol_directory.numbered ~num_symbols:3
+
 (* ---------------------------------------------------------------- *)
 (* Multiple client tests *)
 (* ---------------------------------------------------------------- *)
@@ -113,7 +119,7 @@ let%expect_test "e2e: market data subscriber receives trade and BBO updates" =
     in
     don't_wait_for
       (Pipe.iter_without_pushback reader ~f:(fun event ->
-         let e = Event_protocol.format_event event in
+         let e = Event_protocol.format_event ~directory event in
          print_endline [%string "[MD Subscriber] %{e}"]));
     (* Post a sell *)
     let%bind () =
@@ -156,7 +162,7 @@ let%expect_test "e2e: subscriber only sees events for subscribed symbol" =
     in
     don't_wait_for
       (Pipe.iter_without_pushback reader ~f:(fun event ->
-         let e = Event_protocol.format_event event in
+         let e = Event_protocol.format_event ~directory event in
          print_endline [%string "[MD Subscriber] %{e}"]));
     (* Post on TSLA — subscriber should NOT see this *)
     let%bind () =
@@ -244,7 +250,7 @@ let%expect_test "e2e: audit log subscriber sees full unfiltered stream \
     in
     don't_wait_for
       (Pipe.iter_without_pushback reader ~f:(fun event ->
-         let e = Event_protocol.format_event event in
+         let e = Event_protocol.format_event ~directory event in
          print_endline [%string "[AUDIT] %{e}"]));
     (* Post a sell on AAPL — audit subscriber should see ACCEPTED and BBO. *)
     let%bind () =
@@ -458,7 +464,7 @@ let%expect_test "canceled best offer, should emit BBO update" =
     in
     don't_wait_for
       (Pipe.iter_without_pushback reader ~f:(fun event ->
-         let e = Event_protocol.format_event event in
+         let e = Event_protocol.format_event ~directory event in
          print_endline [%string "[MD Subscriber] %{e}"]));
     (* Post a sell *)
     let%bind () =

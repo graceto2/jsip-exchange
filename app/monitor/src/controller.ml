@@ -1,5 +1,6 @@
 open! Core
 open Jsip_types
+open Jsip_gateway
 
 module Mode = struct
   type t =
@@ -27,7 +28,9 @@ module Display = struct
   type t =
     { title : string
     ; counter : string
-    ; bbo_panel : (Symbol_id.t * Bbo.t) list
+    ; (* Symbols pre-resolved to names, like [visible_events] below: the
+         controller owns rendering, the view just lays out strings. *)
+      bbo_panel : (string * Bbo.t) list
     ; category_chips : Chip.t list
     ; substring_field : substring_field
     ; visible_events : (Event_log.Color.t * string) list
@@ -45,8 +48,8 @@ type t =
   ; should_exit : bool
   }
 
-let create () =
-  { log = Event_log.create ()
+let create ~directory =
+  { log = Event_log.create ~directory
   ; enabled_categories = Event_log.Category.all
   ; committed_substring = ""
   ; mode = Browsing
@@ -176,7 +179,10 @@ let display t : Display.t =
   in
   { title = "JSIP Exchange Monitor"
   ; counter = [%string "%{visible_count#Int} of %{total#Int} events"]
-  ; bbo_panel = Event_log.current_bbos t.log
+  ; bbo_panel =
+      (let directory = Event_log.directory t.log in
+       List.map (Event_log.current_bbos t.log) ~f:(fun (symbol, bbo) ->
+         Event_protocol.symbol_to_string ~directory symbol, bbo))
   ; category_chips =
       [ cat_chip '1' Order_lifecycle
       ; cat_chip '2' Trade

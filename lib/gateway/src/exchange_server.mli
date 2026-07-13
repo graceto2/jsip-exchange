@@ -9,11 +9,17 @@ open! Async
 
 type t
 
-(** Start a server on the given port trading [num_symbols] instruments
-    (symbol ids [0 .. num_symbols - 1]). Returns the server handle and the
-    port it is actually listening on (useful when you pass port 0 to get an
-    OS-assigned port). *)
-val start : num_symbols:int -> port:int -> unit -> t Deferred.t
+(** Start a server on the given port trading the instruments in [directory]
+    (symbol ids [0 .. n-1], where [n] is {!Symbol_directory.num_symbols}).
+    Returns the server handle and the port it is actually listening on
+    (useful when you pass port 0 to get an OS-assigned port).
+
+    The directory is authoritative for how many instruments exist: it sizes
+    the matching engine, so an id is valid exactly when the directory knows
+    it. The server itself never resolves an id to a name — it only serves the
+    directory to clients over {!Rpc_protocol.symbol_directory_rpc}, which do
+    the resolving. *)
+val start : directory:Symbol_directory.t -> port:int -> unit -> t Deferred.t
 
 (** The port the server is listening on. *)
 val port : t -> int

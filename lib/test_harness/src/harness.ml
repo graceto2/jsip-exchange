@@ -8,6 +8,19 @@ open Jsip_gateway
 let aapl = Symbol_id.of_int 0
 let tsla = Symbol_id.of_int 1
 let goog = Symbol_id.of_int 2
+
+(* Names the ids above, in the order that assigns them: [aapl] is 0, [tsla]
+   1, [goog] 2. Rendering goes through this, so expect output reads [AAPL]
+   rather than [0] — which is what the test was already calling it. A test
+   that asks [create] for more than three symbols gets ids this directory
+   does not know; those still render, as raw ids. *)
+let directory =
+  [ "AAPL"; "TSLA"; "GOOG" ]
+  |> List.map ~f:Symbol.of_string
+  |> Symbol_directory.of_symbols
+  |> ok_exn
+;;
+
 let alice = Participant.of_string "Alice"
 let bob = Participant.of_string "Bob"
 let charlie = Participant.of_string "Charlie"
@@ -128,10 +141,13 @@ end
 
 let print_events ?(show = Show.all) events =
   List.iter events ~f:(fun event ->
-    if show event then print_endline (Event_protocol.format_event event))
+    if show event
+    then print_endline (Event_protocol.format_event ~directory event))
 ;;
 
-let print_event event = print_endline (Event_protocol.format_event event)
+let print_event event =
+  print_endline (Event_protocol.format_event ~directory event)
+;;
 
 let submit t (request : Order_request.t) =
   let events =
@@ -217,16 +233,24 @@ let submit_quiet_ t request =
   ignore (submit_quiet t request : Exchange_event.t list)
 ;;
 
+(* Rendered through [directory], like [print_events], so a book header reads
+   [=== AAPL ===] and matches the event lines around it. *)
 let print_book t symbol =
   match Matching_engine.book t.engine symbol with
-  | None -> print_endline [%string "unknown symbol %{symbol#Symbol_id}"]
-  | Some book -> Order_book.snapshot book |> Book.to_string |> print_endline
+  | None ->
+    let symbol = Event_protocol.symbol_to_string ~directory symbol in
+    print_endline [%string "unknown symbol %{symbol}"]
+  | Some book ->
+    Order_book.snapshot book
+    |> Event_protocol.format_book ~directory
+    |> print_endline
 ;;
 
 let print_bbo t symbol =
+  let symbol_name = Event_protocol.symbol_to_string ~directory symbol in
   match Matching_engine.book t.engine symbol with
-  | None -> print_endline [%string "BBO %{symbol#Symbol_id}: unknown symbol"]
+  | None -> print_endline [%string "BBO %{symbol_name}: unknown symbol"]
   | Some book ->
     let bbo = Order_book.best_bid_offer book |> Bbo.to_string in
-    print_endline [%string "BBO %{symbol#Symbol_id}: %{bbo}"]
+    print_endline [%string "BBO %{symbol_name}: %{bbo}"]
 ;;

@@ -214,3 +214,53 @@ let cancel t ~participant ~client_order_id =
           in
           List.concat [ [ cancelled ]; bbo_events ]))
 ;;
+
+(* Close the day: drop every resting [Day] order from its book, announcing
+   each as an [Order_cancel]. Mirrors [cancel] above — emit the event *and*
+   mutate the book, then re-check the BBO — because announcing a cancellation
+   without performing it would leave the exchange quoting and matching
+   against orders it has just told everyone are dead.
+
+   [client_order_ids] is deliberately left alone, exactly as [cancel] leaves
+   it: that table records every order ever submitted, so a later cancel of an
+   expired order is rejected with "Order not found" rather than the
+   misleading "never placed".
+
+   [Ioc] orders never rest, so today the filter keeps everything in the book.
+   It is here so the intent survives a time-in-force that does rest. *)
+let end_of_day t =
+  Array.to_list t.books
+  |> List.concat_map ~f:(fun book ->
+    let bbo_before = Order_book.best_bid_offer book in
+    let expiring =
+      List.append
+        (Order_book.orders_on_side book Side.Buy)
+        (Order_book.orders_on_side book Side.Sell)
+      |> List.filter ~f:(fun order ->
+        match Order.time_in_force order with Day -> true | Ioc -> false)
+    in
+    let cancelled =
+      List.map expiring ~f:(fun order ->
+        Order_book.remove book (Order.order_id order);
+        Exchange_event.Order_cancel
+          { order_id = Order.order_id order
+          ; client_order_id = Order.client_order_id order
+          ; participant = Order.participant order
+          ; symbol = Order.symbol order
+          ; remaining_size = Order.remaining_size order
+          ; reason = Cancel_reason.End_of_day
+          })
+    in
+    (* An empty book was already empty, so its BBO cannot have moved and this
+       yields no event — [end_of_day] on an idle exchange is silent. *)
+    let bbo_after = Order_book.best_bid_offer book in
+    let bbo_events =
+      if Bbo.equal bbo_before bbo_after
+      then []
+      else
+        [ Exchange_event.Best_bid_offer_update
+            { symbol = Order_book.symbol book; bbo = bbo_after }
+        ]
+    in
+    cancelled @ bbo_events)
+;;
