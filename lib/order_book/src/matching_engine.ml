@@ -106,11 +106,9 @@ let submit t ~participant (request : Order.Request.t) =
       Exchange_event.Order_reject
         { participant; request; reason = "Client order ID already in use" }
     in
-    (* [client_order_ids] and [server_id_to_client_id] are never pruned —
-       they retain every order ever submitted, so they grow without bound.
-       Because of that, a [client_order_id] is rejected forever, even after
-       its order fully filled or was cancelled, so a client can never reuse
-       an id. *)
+    (* prev_order looks for an order that was submitted in the past that has
+       the same client order id as the current submit request, if it exists.
+       this is invalid because the set of client order ids is never pruned. *)
     let prev_order = Hashtbl.find t.client_order_ids client_order_id in
     (match prev_order with
      | Some _ -> [ rejected ]

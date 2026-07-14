@@ -46,11 +46,14 @@ let to_string
     (Participant.to_string resting_participant)
 ;;
 
+(* Currently unused *)
 let to_participant_view fill p =
   let aggressor = fill.aggressor_participant in
   let resting = fill.resting_participant in
   let size = fill.size in
   let symbol = fill.symbol in
+  (* Of type Symbol_id.t, but cannot process this within types because the
+     symbol directory is only accessible outside. *)
   let price = Price.to_string_dollar fill.price in
   let aggressor_side = fill.aggressor_side in
   let resting_side = Side.flip aggressor_side in
